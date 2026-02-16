@@ -136,10 +136,7 @@ def calculate_portfolio_state(df_trades, all_dates, tickers):
         # Note: If multiple trades on same day, process all.
         # But 'date' in all_dates might match trade 'Date'.
         
-        # Debug: Print first few dates to verify loop is running
-        if date == all_dates[0]:
-            print(f"DEBUG: Processing first date in grid: {date}")
-            print(f"DEBUG: Next trade date: {df_trades.iloc[trade_idx]['Date']} (Index: {trade_idx})")
+
 
         while trade_idx < n_trades and df_trades.iloc[trade_idx]['Date'] <= date:
             trade = df_trades.iloc[trade_idx]
@@ -181,7 +178,7 @@ def calculate_portfolio_state(df_trades, all_dates, tickers):
                 cost_basis_tracker[ticker]['total_cost'] = new_cost
                 cost_basis_tracker[ticker]['avg_cost'] = new_cost / new_shares if new_shares > 0 else 0
                 
-                print(f"DEBUG: [買進] {date.date()} | {ticker} | 股數: {qty} | 累計庫存: {current_units[ticker]}")
+
                 
             elif side == 'sell':
                 # 賣出：增加現金，減少庫存
@@ -193,7 +190,7 @@ def calculate_portfolio_state(df_trades, all_dates, tickers):
                 cost_basis_tracker[ticker]['total_shares'] -= qty
                 cost_basis_tracker[ticker]['total_cost'] -= (qty * avg_c)
                 
-                print(f"DEBUG: [賣出] {date.date()} | {ticker} | 股數: {qty} | 累計庫存: {current_units[ticker]}")
+
                 
             trade_idx += 1
         
