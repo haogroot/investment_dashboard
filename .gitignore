@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Project Specific - DATA PRIVACY
+trade_source/*.csv
+trade_output/*.xlsx
+trade_output/*.xls
+
+# OS
+.DS_Store
+Thumbs.db
