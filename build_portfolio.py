@@ -361,6 +361,7 @@ def create_excel_dashboard(df_trades, market_data, df_ref, df_units, df_cash, co
     })
     chart_nav.set_title({'name': 'Portfolio Construction'})
     chart_nav.set_x_axis({'name': 'Date', 'date_axis': True})
+    chart_nav.set_y_axis({'name': 'Net Asset Value', 'num_format': '$#,##0'})
     chart_nav.set_legend({'none': True})
     ws_dash.insert_chart('E2', chart_nav, {'x_scale': 1.5, 'y_scale': 1.5})
 
