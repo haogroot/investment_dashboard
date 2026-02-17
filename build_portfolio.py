@@ -78,15 +78,22 @@ def load_process_data():
         print("No tickers found.")
         return None, None, None, None
 
-    print(f"Fetching market data for: {tickers}...")
-    
-    # Fetch OHLCV
+    # Fetch OHLCV + Benchmark
     # Using threads=True for faster download
-    market_data = yf.download(tickers, start=START_DATE, progress=False, threads=True)['Close']
+    tickers_to_fetch = tickers + ['^GSPC']
+    print(f"Fetching market data for: {tickers_to_fetch}...")
     
-    # Handle single ticker case
+    market_data = yf.download(tickers_to_fetch, start=START_DATE, progress=False, threads=True)['Close']
+    
+    # Handle single ticker case (yf returns Series if only 1 ticker asked, DataFrame if more)
+    # But now we always fetch at least 2 (Ticker + GSPC), so it should return DataFrame.
+    # However, if Ticker IS GSPC (duplicated), might need care.
     if isinstance(market_data, pd.Series):
-        market_data = market_data.to_frame(name=tickers[0])
+        market_data = market_data.to_frame()
+    
+    # Rename ^GSPC column to 'SP500', easier for Excel references
+    if '^GSPC' in market_data.columns:
+        market_data = market_data.rename(columns={'^GSPC': 'SP500'})
     
     # Fill missing days (weekends/holidays) to ensure alignment with Daily_Units
     end_date_dt = datetime.today()
@@ -255,13 +262,17 @@ def create_excel_dashboard(df_trades, market_data, df_ref, df_units, df_cash, co
         ws_pos.write(row, 0, ticker)
         
         # 1 Company (Lookup)
-        ws_pos.write_formula(row, 1, f'=XLOOKUP(A{row+1},Reference_Data!A:A,Reference_Data!B:B)', value=df_ref[df_ref['Ticker']==ticker]['Name'].values[0] if not df_ref.empty else '')
+        ref_row = df_ref[df_ref['Ticker']==ticker]
+        comp_name = ref_row['Name'].values[0] if not ref_row.empty else ''
+        ws_pos.write_formula(row, 1, f'=XLOOKUP(A{row+1},Reference_Data!A:A,Reference_Data!B:B)', value=comp_name)
         
         # 2 Sector (Lookup)
-        ws_pos.write_formula(row, 2, f'=XLOOKUP(A{row+1},Reference_Data!A:A,Reference_Data!C:C)', value=df_ref[df_ref['Ticker']==ticker]['Sector'].values[0] if not df_ref.empty else '')
+        sector = ref_row['Sector'].values[0] if not ref_row.empty else ''
+        ws_pos.write_formula(row, 2, f'=XLOOKUP(A{row+1},Reference_Data!A:A,Reference_Data!C:C)', value=sector)
         
         # 3 Country (Lookup)
-        ws_pos.write_formula(row, 3, f'=XLOOKUP(A{row+1},Reference_Data!A:A,Reference_Data!E:E)', value=df_ref[df_ref['Ticker']==ticker]['Country'].values[0] if not df_ref.empty else '')
+        country = ref_row['Country'].values[0] if not ref_row.empty else ''
+        ws_pos.write_formula(row, 3, f'=XLOOKUP(A{row+1},Reference_Data!A:A,Reference_Data!E:E)', value=country)
         
         # 4 Shares (From Daily_Units last row)
         col_letter = xlsxwriter.utility.xl_col_to_name(i + 1) # B, C... (Date is A)
@@ -404,11 +415,154 @@ def create_excel_dashboard(df_trades, market_data, df_ref, df_units, df_cash, co
         ws_geo.write_formula(r, 2, f'=B{r+1}/SUM(B$2:B${len(countries)+1})', fmt_pct)
     ws_geo.autofit()
 
-    writer.close()
-    print("Dashboard created successfully.")
+    print("Starting Excel generation...")
+    try:
+        # --- 3. Risk Analytics Sheets ---
+
+        # --- Correlation Matrix ---
+        print("Building Correlation Matrix...")
+        ws_corr = workbook.add_worksheet('Correlation')
+        # Headers: Tickers + SP500
+        corr_tickers = tickers + ['SP500'] if 'SP500' in market_data.columns else tickers
+        ws_corr.write_row(0, 1, corr_tickers, fmt_header_centered)
+        ws_corr.write_column(1, 0, corr_tickers, fmt_header_centered)
+        
+        # Pre-calculate column letters for Market Data
+        # Market Data Cols: Date(A), Tickers(B, C...), SP500(Last)
+        md_col_map = {}
+        # Adjust index because Market_Data sheet has Date in Col A (Index 0)
+        # So market_data.columns[0] (Ticker1) is at Excel Col B (Index 1)
+        for i, t in enumerate(market_data.columns):
+            md_col_map[t] = xlsxwriter.utility.xl_col_to_name(i+1)
+
+        n_data_rows = len(market_data)
+        
+        for r, t_row in enumerate(corr_tickers):
+            for c, t_col in enumerate(corr_tickers):
+                if t_row in md_col_map and t_col in md_col_map:
+                    col1 = md_col_map[t_row]
+                    col2 = md_col_map[t_col]
+                    formula = f'=CORREL(Market_Data!{col1}2:{col1}{n_data_rows+1}, Market_Data!{col2}2:{col2}{n_data_rows+1})'
+                    ws_corr.write_formula(r+1, c+1, formula, workbook.add_format({'num_format': '0.00'}))
+
+        ws_corr.conditional_format(1, 1, len(corr_tickers), len(corr_tickers), {
+            'type': '3_color_scale',
+            'min_color': '#63BE7B', 'mid_color': '#FFEB84', 'max_color': '#F8696B'
+        })
+        ws_corr.autofit()
+
+        # --- Helper: Daily Returns Sheet ---
+        print("Building Daily Returns...")
+        ws_ret = workbook.add_worksheet('Daily_Returns')
+        ws_ret.hide()
+        ws_ret.write_row(0, 0, ['Date'] + corr_tickers, fmt_header_centered)
+        
+        for day_i in range(n_data_rows - 1): # Returns are N-1
+            row = day_i + 1
+            excel_row = row + 1
+            # Date
+            ws_ret.write_formula(row, 0, f'=Market_Data!A{excel_row+1}', fmt_date)
+            
+            for c, t in enumerate(corr_tickers):
+                if t in md_col_map:
+                    col = md_col_map[t]
+                    # LN(P_t / P_t-1)
+                    ws_ret.write_formula(row, c+1, f'=LN(Market_Data!{col}{excel_row+1}/Market_Data!{col}{excel_row})', fmt_pct)
+
+        # --- Helper: Daily Drawdowns Sheet ---
+        print("Building Daily Drawdowns...")
+        ws_dd = workbook.add_worksheet('Daily_Drawdowns')
+        ws_dd.hide()
+        ws_dd.write_row(0, 0, ['Date'] + corr_tickers, fmt_header_centered)
+        
+        for day_i in range(n_data_rows):
+            row = day_i + 1
+            excel_row = row + 1
+            # Date
+            ws_dd.write_formula(row, 0, f'=Market_Data!A{excel_row}', fmt_date)
+            
+            for c, t in enumerate(corr_tickers):
+                if t in md_col_map:
+                    col = md_col_map[t]
+                    # Formula: Price / MAX(Price_Start:Price_Today) - 1
+                    formula = f'=Market_Data!{col}{excel_row}/MAX(Market_Data!{col}$2:Market_Data!{col}{excel_row}) - 1'
+                    ws_dd.write_formula(row, c+1, formula, fmt_pct)
+
+        # --- Risk Metrics ---
+        print("Building Risk Metrics...")
+        ws_risk = workbook.add_worksheet('Risk_Metrics')
+        headers_risk = ['Ticker', 'Ann Return', 'Ann Volatility', 'Sharpe Ratio', 'Beta (vs SP500)', 'Max Drawdown', 'VaR (95%)', 'VaR (99%)', 'CVaR (95%)']
+        ws_risk.write_row(0, 0, headers_risk, fmt_header_centered)
+        
+        rf_rate = 0.04 # Risk Free Rate assumption
+        
+        ret_col_map = {t: xlsxwriter.utility.xl_col_to_name(i+1) for i, t in enumerate(corr_tickers)}
+        n_ret_rows = n_data_rows - 1
+
+        for i, t in enumerate(tickers):
+            if t in ret_col_map:
+                r = i + 1
+                c_ret = ret_col_map[t]
+                sp_ret = ret_col_map.get('SP500', c_ret)
+                
+                ret_rng = f'Daily_Returns!{c_ret}2:{c_ret}{n_ret_rows+1}'
+                bench_rng = f'Daily_Returns!{sp_ret}2:{sp_ret}{n_ret_rows+1}'
+                
+                ws_risk.write(r, 0, t)
+                ws_risk.write_formula(r, 1, f'=AVERAGE({ret_rng})*252', fmt_pct)
+                ws_risk.write_formula(r, 2, f'=STDEV.P({ret_rng})*SQRT(252)', fmt_pct)
+                ws_risk.write_formula(r, 3, f'=(B{r+1}-{rf_rate})/C{r+1}', workbook.add_format({'num_format': '0.00'}))
+                ws_risk.write_formula(r, 4, f'=SLOPE({ret_rng}, {bench_rng})', workbook.add_format({'num_format': '0.00'}))
+                
+                # Max Drawdown: MIN(Daily_Drawdowns!Col)
+                dd_col = ret_col_map[t]
+                ws_risk.write_formula(r, 5, f'=MIN(Daily_Drawdowns!{dd_col}2:{dd_col}{n_data_rows+1})', fmt_pct)
+                ws_risk.write_formula(r, 6, f'=PERCENTILE.INC({ret_rng}, 0.05)', fmt_pct)
+                ws_risk.write_formula(r, 7, f'=PERCENTILE.INC({ret_rng}, 0.01)', fmt_pct)
+                ws_risk.write_formula(r, 8, f'=AVERAGEIF({ret_rng}, "<"&G{r+1})', fmt_pct)
+                
+        ws_risk.autofit()
+        
+        # --- Stress Testing ---
+        print("Building Stress Testing...")
+        ws_stress = workbook.add_worksheet('Stress_Testing')
+        headers_stress = ['Scenario', 'Market Change', 'Portfolio Impact (Est.)', 'Est. P&L']
+        ws_stress.write_row(0, 0, headers_stress, fmt_header_centered)
+        
+        scenarios = [
+            ('Market Crash', -0.20),
+            ('Correction', -0.10),
+            ('Flash Crash', -0.05),
+            ('Rally', 0.10)
+        ]
+        
+        for i, (name, chg) in enumerate(scenarios):
+            r = i + 1
+            ws_stress.write(r, 0, name)
+            ws_stress.write(r, 1, chg, fmt_pct)
+            beta_formula = f'SUMPRODUCT(Positions!L2:L{n_tickers+1}, Risk_Metrics!E2:E{n_tickers+1})'
+            ws_stress.write_formula(r, 2, f'={beta_formula}*B{r+1}', fmt_pct)
+            ws_stress.write_formula(r, 3, f'=C{r+1}*Dashboard!C2', fmt_currency)
+        
+        ws_stress.autofit()
+
+        writer.close()
+        print("Dashboard created successfully.")
+    except Exception as e:
+        print(f"ERROR in create_excel_dashboard: {e}")
+        import traceback
+        traceback.print_exc()
+        try:
+            writer.close()
+        except:
+            pass
 
 if __name__ == "__main__":
     df_trades, market_data, df_ref, all_dates = load_process_data()
     if df_trades is not None:
-        df_units, df_cash, cost_basis = calculate_portfolio_state(df_trades, all_dates, market_data.columns.tolist())
+        # Tickers for portfolio are those in df_ref (excluding SP500 if it was added separately, but df_ref is built from df_trades tickers)
+        # However, df_ref is built in load_process_data from df_trades.Ticker.unique() BEFORE SP500 is fetched attached to market_data.
+        # So df_ref['Ticker'] is safe.
+        portfolio_tickers = df_ref['Ticker'].tolist()
+        df_units, df_cash, cost_basis = calculate_portfolio_state(df_trades, all_dates, portfolio_tickers)
         create_excel_dashboard(df_trades, market_data, df_ref, df_units, df_cash, cost_basis, OUTPUT_FILE)
