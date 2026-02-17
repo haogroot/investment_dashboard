@@ -545,6 +545,123 @@ def create_excel_dashboard(df_trades, market_data, df_ref, df_units, df_cash, co
             ws_stress.write_formula(r, 3, f'=C{r+1}*Dashboard!C2', fmt_currency)
         
         ws_stress.autofit()
+        
+        # --- Investment Theses ---
+        print("Building Investment Theses...")
+        ws_thesis = workbook.add_worksheet('Investment_Theses')
+        headers_thesis = ['Ticker', 'Weight', 'Investment Thesis', 'Catalyst', 'Edge']
+        ws_thesis.write_row(0, 0, headers_thesis, fmt_header_centered)
+        
+        # Pre-defined Theses Data
+        theses_data = {
+            'AAPL': {
+                'Thesis': "iPhone 安裝基數接近 20 億，創造巨大的 Services 收入機會。硬體已成熟，但 Services 每年增長 15% 以上。",
+                'Catalyst': "印度製造擴張減少中國風險，解鎖下一個 10 億用戶。",
+                'Edge': "市場將其視為無增長的硬體公司，忽視了 Services 的複利效應。"
+            },
+            'MSFT': {
+                'Thesis': "Cloud + AI 領導地位。Azure 增長速度快於 AWS。Copilot 貨幣化才剛開始。",
+                'Catalyst': "Enterprise Copilot 的採用在 2026 年達到轉折點。",
+                'Edge': "隨著市場意識到 AI 收入是真實的而非炒作，估值倍數擴張。"
+            },
+            'GOOGL': {
+                'Thesis': "佔主導地位的 Search 壟斷，YouTube 潛力尚未充分發揮。Search (SGE) 中的 AI 整合捍衛了護城河。",
+                'Catalyst': "Gemini Ultra 發布縮小與 GPT-4 的差距；Waymo 擴張。",
+                'Edge': "相對於其他 Mag-7 同業的估值斷層；Cloud 獲利能力出現轉機。"
+            },
+            'NVDA': {
+                'Thesis': "AI 革命的默認基礎設施層。CUDA 軟體護城河形成高轉換成本。",
+                'Catalyst': "B100/Blackwell 發布維持 ASP 主導地位；Sovereign AI 需求。",
+                'Edge': "供應鏈掌控能力 (CoWoS) 創造領先競爭對手多年的優勢。"
+            },
+            'TSLA': {
+                'Thesis': "不僅是一家汽車公司：Energy storage + FSD/Robotaxi 期權價值。EV 製造的成本領導地位。",
+                'Catalyst': "FSD V12 廣泛發布；第 3 代平台（廉價車）公告；Optimus 進展。",
+                'Edge': "在真實世界 AI 駕駛里程中的數據優勢是不可逾越的。"
+            },
+            'VTI': {
+                'Thesis': "核心投資組合重心。以極低費用 (0.03%) 捕捉美國股票市場的總報酬。",
+                'Catalyst': "美國經濟韌性；Fed 轉向降息帶動全體市場。",
+                'Edge': "保證市場回報；零經理人風險。"
+            },
+            'QQQ': {
+                'Thesis': "押注創新經濟。Nasdaq-100 基於規則的方法論自動捕捉贏家。",
+                'Catalyst': "AI 生產力爆發使科技密集型指數不成比例地獲益。",
+                'Edge': "被動動能策略，數十年來表現優於主動管理。"
+            },
+            'VT': {
+                'Thesis': "全球多元化避險，對抗美元主導地位或估值萎縮。",
+                'Catalyst': "新興市場均值回歸；美元走弱週期。",
+                'Edge': "對全球資本主義的最徹底不可知論押注。"
+            },
+            'BND': {
+                'Thesis': "收入來源與波動緩衝。在衰退中與股票的相關性回歸正常。",
+                'Catalyst': "Fed 降息週期於 2024/2025 開始將推升債券價格（存續期間效應）。",
+                'Edge': "在經歷十年的 ZIRP 後，殖利率終於具有吸引力。"
+            },
+            'COHR': { # Coherent
+                'Thesis': "SiC 與光通訊材料科學領導者。AI Networking 的鏟子與鋤頭。",
+                'Catalyst': "AI 集群驅動的 Datacenter 收發器升級週期 (800G/1.6T)。",
+                'Edge': "雷射元件的垂直整合提供邊際耐用性。"
+            },
+            'LITE': { # Lumentum
+                'Thesis': "光子學應用。電信與 Datacenter 互連的關鍵供應商。",
+                'Catalyst': "庫存修正週期結束；AI 後端網路建設 (Active cables)。",
+                'Edge': "高速收發器市場的雙寡頭結構。"
+            },
+            'AVGO': { # Broadcom
+                'Thesis': "定製矽晶片之王。超大規模雲端運算商的 Custom ASICs + 高利潤軟體 (VMware)。",
+                'Catalyst': "AI ASIC 訂單增長；VMware 成本協同效應實現。",
+                'Edge': "一流的資本配置與 M&A 整合記錄。"
+            },
+            'MRVL': { # Marvell
+                'Thesis': "純基礎設施矽晶片。雲端巨頭的光學 DSPs 與定製運算。",
+                'Catalyst': "加速運算轉向定製矽晶片 (ASIC)，有利於 Marvell 的設計獲勝管道。",
+                'Edge': "在高速數據移動 (PAM4 DSPs) 領域擁有獨特的 IP 組合。"
+            },
+            'SPY': {
+                'Thesis': "標準基準風險敞口。高流動性和期權靈活性。",
+                'Catalyst': "企業盈利復甦；美國例外論。",
+                'Edge': "美國股市的標準計量單位。"
+            }
+        }
+
+        # Formats for Thesis sheet
+        fmt_text_wrap = workbook.add_format({'text_wrap': True, 'valign': 'top', 'border': 1})
+        fmt_zebra_odd = workbook.add_format({'text_wrap': True, 'valign': 'top', 'border': 1, 'bg_color': '#F2F2F2'})
+        fmt_pct_wrap = workbook.add_format({'num_format': '0.00%', 'valign': 'top', 'border': 1})
+        fmt_pct_zebra = workbook.add_format({'num_format': '0.00%', 'valign': 'top', 'border': 1, 'bg_color': '#F2F2F2'})
+        
+        # Set Column Widths
+        ws_thesis.set_column('A:A', 10) # Ticker
+        ws_thesis.set_column('B:B', 10) # Weight
+        ws_thesis.set_column('C:C', 50) # Thesis
+        ws_thesis.set_column('D:D', 40) # Catalyst
+        ws_thesis.set_column('E:E', 40) # Edge
+        
+        row_height = 55
+        
+        for i, t in enumerate(tickers):
+            row = i + 1
+            # Zebra Striping
+            fmt_txt = fmt_zebra_odd if row % 2 == 1 else fmt_text_wrap
+            fmt_p = fmt_pct_zebra if row % 2 == 1 else fmt_pct_wrap
+            
+            ws_thesis.set_row(row, row_height)
+            
+            # Ticker
+            ws_thesis.write(row, 0, t, fmt_txt)
+            
+            # Weight (Lookup from Positions)
+            # Positions Sheet: A=Ticker, L=Weight.
+            # XLOOKUP(Ticker, Positions!A:A, Positions!L:L)
+            ws_thesis.write_formula(row, 1, f'=XLOOKUP(A{row+1},Positions!A:A,Positions!L:L)', fmt_p)
+            
+            # Content
+            data = theses_data.get(t, {'Thesis': '', 'Catalyst': '', 'Edge': ''})
+            ws_thesis.write(row, 2, data['Thesis'], fmt_txt)
+            ws_thesis.write(row, 3, data['Catalyst'], fmt_txt)
+            ws_thesis.write(row, 4, data['Edge'], fmt_txt)
 
         writer.close()
         print("Dashboard created successfully.")
