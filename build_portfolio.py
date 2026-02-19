@@ -115,7 +115,10 @@ def load_process_data(input_file=None):
                 'Sector': info.get('sector', 'Unknown'),
                 'Industry': info.get('industry', 'Unknown'),
                 'Country': info.get('country', 'Unknown'),
-                'Beta': info.get('beta', 1.0)
+                'Beta': info.get('beta', 1.0),
+                'Type': info.get('quoteType', 'EQUITY'),
+                'Strike': info.get('strikePrice', 0),
+                'Expiry': info.get('expireDate', 0)
             })
         except Exception as e:
             print(f"Could not fetch info for {t}: {e}")

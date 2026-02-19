@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4" data-i18n="options_title">Options Portfolio</h2>
+
+        <div class="card p-3">
+            {% if data.options %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped" id="optionsTable">
+                    <thead>
+                        <tr class="cursor-pointer">
+                            <th onclick="sortTable(0)" data-i18n="ticker">Ticker <i class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(1)" data-i18n="type">Type <i class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(2)" data-i18n="expiry">Expiry <i class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(3, true)" class="text-end" data-i18n="strike">Strike <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(4, true)" class="text-end" data-i18n="qty">Qty <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(5, true)" class="text-end" data-i18n="price">Price <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(6, true)" class="text-end" data-i18n="mkt_val">Market Value <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(7, true)" class="text-end" data-i18n="pnl">Unrealized P&L <i
+                                    class="fas fa-sort small"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for opt in data.options %}
+                        <tr>
+                            <td class="fw-bold">{{ opt.ticker }}</td>
+                            <td>
+                                <span class="badge {{ 'bg-success' if 'CALL' in opt.type else 'bg-danger' }}">
+                                    {{ opt.type }}
+                                </span>
+                            </td>
+                            <td>{{ opt.expiry }}</td>
+                            <td class="text-end">{{ opt.strike }}</td>
+                            <td class="text-end privacy-sensitive">{{ opt.shares }}</td>
+                            <td class="text-end privacy-sensitive">{{ opt.price | currency }}</td>
+                            <td class="text-end privacy-sensitive">{{ opt.market_value | currency }}</td>
+                            <td
+                                class="text-end privacy-sensitive {{ 'text-green' if opt.unrealized_pnl >= 0 else 'text-red' }}">
+                                {{ opt.unrealized_pnl | currency }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info" data-i18n="no_options">
+                No options positions found in the portfolio.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // Additional translations for Options page
+    const optTranslations = {
+        en: {
+            options_title: "Options Portfolio",
+            type: "Type",
+            expiry: "Expiry",
+            strike: "Strike",
+            qty: "Contracts",
+            no_options: "No options positions found in the portfolio."
+        },
+        zh: {
+            options_title: "選擇權部位",
+            type: "類型",
+            expiry: "到期日",
+            strike: "履約價",
+            qty: "口數",
+            no_options: "目前投資組合中無選擇權部位。"
+        }
+    };
+
+    Object.assign(translations.en, optTranslations.en);
+    Object.assign(translations.zh, optTranslations.zh);
+    updateLanguage();
+
+    // Sort function (reuse logic or include script)
+    function sortTable(n, isNumber = false) {
+        var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+        table = document.getElementById("optionsTable");
+        switching = true;
+        dir = "asc";
+        while (switching) {
+            switching = false;
+            rows = table.rows;
+            for (i = 1; i < (rows.length - 1); i++) {
+                shouldSwitch = false;
+                x = rows[i].getElementsByTagName("TD")[n];
+                y = rows[i + 1].getElementsByTagName("TD")[n];
+                let xVal = x.textContent.trim();
+                let yVal = y.textContent.trim();
+                if (isNumber) {
+                    xVal = parseFloat(xVal.replace(/[^0-9.-]+/g, ""));
+                    yVal = parseFloat(yVal.replace(/[^0-9.-]+/g, ""));
+                } else {
+                    xVal = xVal.toLowerCase();
+                    yVal = yVal.toLowerCase();
+                }
+                if (dir == "asc") {
+                    if (xVal > yVal) { shouldSwitch = true; break; }
+                } else if (dir == "desc") {
+                    if (xVal < yVal) { shouldSwitch = true; break; }
+                }
+            }
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+                switchcount++;
+            } else {
+                if (switchcount == 0 && dir == "asc") {
+                    dir = "desc";
+                    switching = true;
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

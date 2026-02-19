@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4" data-i18n="sector_title">Sector Exposure</h2>
+
+        <div class="card p-3">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th data-i18n="sector">Sector</th>
+                            <th class="text-end" data-i18n="value">Value (USD)</th>
+                            <th class="text-end" style="width: 100px;" data-i18n="weight">Weight</th>
+                            <th></th> <!-- Bar Column -->
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sec in data.sectors %}
+                        <tr>
+                            <td class="fw-bold">{{ sec.sector }}</td>
+                            <td class="text-end privacy-sensitive">{{ sec.value | currency }}</td>
+                            <td class="text-end">{{ sec.weight | pct }}</td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-primary" role="progressbar"
+                                        style="width: {{ sec.weight * 100 }}%" aria-valuenow="{{ sec.weight * 100 }}"
+                                        aria-valuemin="0" aria-valuemax="100">
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const secTranslations = {
+        en: {
+            sector_title: "Sector Exposure",
+            value: "Value (USD)"
+        },
+        zh: {
+            sector_title: "板塊曝險分析",
+            value: "市值 (USD)"
+        }
+    };
+    Object.assign(translations.en, secTranslations.en);
+    Object.assign(translations.zh, secTranslations.zh);
+    updateLanguage();
+</script>
+{% endblock %}

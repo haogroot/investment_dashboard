@@ -65,6 +65,24 @@ Fetches only the latest market prices (skips trade check).
 python update_portfolio.py quick
 ```
 
+## HTML Dashboard (New) 📊
+
+Generate a set of interactive HTML reports (Positions, Risk, Options, etc.) viewable in any browser.
+
+1.  **Install Dependency**:
+    ```bash
+    pip install jinja2
+    ```
+
+2.  **Generate Reports**:
+    ```bash
+    python generate_html.py
+    ```
+    *Optional: Specify custom input file: `python generate_html.py my_trades.csv`*
+
+3.  **View**:
+    Open `trade_output/html/index.html` in your browser.
+
 ### 3. Add Trade Manually
 Appends a single trade to your CSV and runs a full update.
 ```bash

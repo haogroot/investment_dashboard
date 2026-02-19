@@ -6,9 +6,8 @@ venv/
 .env
 
 # Project Specific - DATA PRIVACY
-trade_source/*.csv
-trade_output/*.xlsx
-trade_output/*.xls
+trade_source/
+trade_output/
 
 # OS
 .DS_Store

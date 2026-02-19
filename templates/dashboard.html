@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <!-- Header -->
+    <div class="col-12">
+        <h2 class="mb-3" data-i18n="dashboard_title">Portfolio Overview</h2>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card h-100 p-3">
+            <h6 class="text-muted" data-i18n="nav">Net Asset Value</h6>
+            <h3 class="privacy-sensitive">{{ data.dashboard.nav | currency }}</h3>
+            <small class="text-muted">
+                <span data-i18n="cash">Cash</span>: <span class="privacy-sensitive">{{ data.dashboard.cash | currency
+                    }}</span>
+            </small>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card h-100 p-3">
+            <h6 class="text-muted" data-i18n="day_change">Day Change</h6>
+            <h3 class="{{ 'text-green' if data.dashboard.day_change_pct >= 0 else 'text-red' }}">
+                {{ data.dashboard.day_change_pct | pct }}
+            </h3>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card h-100 p-3">
+            <h6 class="text-muted" data-i18n="total_return">Total Return</h6>
+            <h3 class="{{ 'text-green' if data.dashboard.total_return_pct >= 0 else 'text-red' }}">
+                {{ data.dashboard.total_return_pct | pct }}
+            </h3>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-6 mb-3">
+        <div class="card h-100 p-3">
+            <h6 class="text-muted" data-i18n="max_drawdown">Max Drawdown</h6>
+            <h3 class="text-danger">{{ data.dashboard.max_drawdown | pct }}</h3>
+            <small class="text-muted">
+                <span data-i18n="sharpe">Sharpe</span>: {{ "%.2f"|format(data.dashboard.sharpe) }}
+            </small>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <!-- NAV Chart -->
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100 p-3">
+            <h5 data-i18n="nav_history">NAV History</h5>
+            <div style="height: 300px;">
+                <canvas id="navChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Allocation Chart -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100 p-3">
+            <h5 data-i18n="allocation">Allocation</h5>
+            <div style="height: 300px; position: relative;">
+                <canvas id="allocationChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Holdings (Mini Table) -->
+<div class="row">
+    <div class="col-12">
+        <div class="card p-3">
+            <h5 data-i18n="top_positions">Top Positions</h5>
+            <div class="table-responsive">
+                <table class="table table-hover table-borderless">
+                    <thead>
+                        <tr>
+                            <th data-i18n="ticker">Ticker</th>
+                            <th data-i18n="name">Name</th>
+                            <th data-i18n="sector">Sector</th>
+                            <th class="text-end" data-i18n="price">Price</th>
+                            <th class="text-end" data-i18n="mkt_val">Market Value</th>
+                            <th class="text-end" data-i18n="weight">Weight</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pos in data.positions[:5] %}
+                        <tr>
+                            <td class="fw-bold">{{ pos.ticker }}</td>
+                            <td>{{ pos.name }}</td>
+                            <td>{{ pos.sector }}</td>
+                            <td class="text-end privacy-sensitive">{{ pos.price | currency }}</td>
+                            <td class="text-end privacy-sensitive">{{ pos.market_value | currency }}</td>
+                            <td class="text-end">{{ pos.weight | pct }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-end mt-2">
+                <a href="positions.html" class="btn btn-sm btn-outline-primary" data-i18n="view_all">View All</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Prepare Data from Jinja
+    const navHistory = {{ data.dashboard.history | tojson }};
+    const sectors = {{ data.sectors | tojson }};
+
+    // NAV Chart
+    const ctxNav = document.getElementById('navChart').getContext('2d');
+    new Chart(ctxNav, {
+        type: 'line',
+        data: {
+            labels: navHistory.map(d => d.date),
+            datasets: [{
+                label: 'NAV',
+                data: navHistory.map(d => d.nav),
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.1,
+                pointRadius: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            scales: {
+                x: {
+                    grid: { color: '#333' },
+                    ticks: { color: '#aaa' }
+                },
+                y: {
+                    grid: { color: '#333' },
+                    ticks: { color: '#aaa' }
+                }
+            }
+        }
+    });
+
+    // Allocation Chart
+    const ctxAlloc = document.getElementById('allocationChart').getContext('2d');
+    new Chart(ctxAlloc, {
+        type: 'doughnut',
+        data: {
+            labels: sectors.map(s => s.sector),
+            datasets: [{
+                data: sectors.map(s => s.value),
+                backgroundColor: [
+                    '#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
+                    '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: { color: '#e0e0e0' }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

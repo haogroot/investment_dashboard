@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4" data-i18n="positions_title">Portfolio Positions</h2>
+
+        <div class="card p-3">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped" id="positionsTable">
+                    <thead>
+                        <tr class="cursor-pointer">
+                            <th onclick="sortTable(0)" data-i18n="ticker">Ticker <i class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(1)" data-i18n="name">Name <i class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(2)" data-i18n="sector">Sector <i class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(3)" data-i18n="country">Country <i class="fas fa-sort small"></i>
+                            </th>
+                            <th onclick="sortTable(4, true)" class="text-end" data-i18n="shares">Shares <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(5, true)" class="text-end" data-i18n="avg_cost">Avg Cost <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(6, true)" class="text-end" data-i18n="price">Price <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(7, true)" class="text-end" data-i18n="mkt_val">Market Value <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(8, true)" class="text-end" data-i18n="pnl">Unrealized P&L <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(9, true)" class="text-end" data-i18n="pnl_pct">P&L % <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(10, true)" class="text-end" data-i18n="weight">Weight <i
+                                    class="fas fa-sort small"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pos in data.positions %}
+                        <tr>
+                            <td class="fw-bold">{{ pos.ticker }}</td>
+                            <td>{{ pos.name }}</td>
+                            <td>{{ pos.sector }}</td>
+                            <td>{{ pos.country }}</td>
+                            <td class="text-end privacy-sensitive">{{ "%.2f"|format(pos.shares) }}</td>
+                            <td class="text-end privacy-sensitive">{{ pos.avg_cost | currency }}</td>
+                            <td class="text-end privacy-sensitive">{{ pos.price | currency }}</td>
+                            <td class="text-end privacy-sensitive">{{ pos.market_value | currency }}</td>
+                            <td
+                                class="text-end privacy-sensitive {{ 'text-green' if pos.unrealized_pnl >= 0 else 'text-red' }}">
+                                {{ pos.unrealized_pnl | currency }}
+                            </td>
+                            <td class="text-end {{ 'text-green' if pos.pnl_pct >= 0 else 'text-red' }}">
+                                {{ pos.pnl_pct | pct }}
+                            </td>
+                            <td class="text-end">{{ pos.weight | pct }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function sortTable(n, isNumber = false) {
+        var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+        table = document.getElementById("positionsTable");
+        switching = true;
+        // Set the sorting direction to ascending:
+        dir = "asc";
+
+        while (switching) {
+            switching = false;
+            rows = table.rows;
+            /* Loop through all table rows (except the first, which contains table headers): */
+            for (i = 1; i < (rows.length - 1); i++) {
+                shouldSwitch = false;
+
+                x = rows[i].getElementsByTagName("TD")[n];
+                y = rows[i + 1].getElementsByTagName("TD")[n];
+
+                let xVal = x.textContent.trim();
+                let yVal = y.textContent.trim();
+
+                if (isNumber) {
+                    // Remove currency symbols, commas, %
+                    xVal = parseFloat(xVal.replace(/[^0-9.-]+/g, ""));
+                    yVal = parseFloat(yVal.replace(/[^0-9.-]+/g, ""));
+                } else {
+                    xVal = xVal.toLowerCase();
+                    yVal = yVal.toLowerCase();
+                }
+
+                if (dir == "asc") {
+                    if (xVal > yVal) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                } else if (dir == "desc") {
+                    if (xVal < yVal) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                }
+            }
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+                switchcount++;
+            } else {
+                if (switchcount == 0 && dir == "asc") {
+                    dir = "desc";
+                    switching = true;
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}
