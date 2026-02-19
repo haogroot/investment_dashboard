@@ -43,9 +43,33 @@ This Python project generates a comprehensive investment portfolio dashboard in 
 3.  **View Results**:
     - The generated Excel dashboard will be in the `trade_output` directory, named with the format `portfolio_dashboard_YYYYMMDD.xlsx`.
 
+## Daily Updates (New)
+
+You can update your portfolio incrementally without rebuilding.
+
+### 1. Full Update (Trades + Prices)
+Syncs new trades from your CSV and fetches the latest market prices.
+```bash
+python update_portfolio.py
+```
+
+### 2. Quick Update (Prices Only)
+Fetches only the latest market prices (skips trade check).
+```bash
+python update_portfolio.py quick
+```
+
+### 3. Add Trade Manually
+Appends a single trade to your CSV and runs a full update.
+```bash
+# Usage: python update_portfolio.py trade DATE TICKER SIDE QTY PRICE
+python update_portfolio.py trade 2026-02-18 NVDA BUY 10 125.50
+```
+
 ## Project Structure
 
 - `build_portfolio.py`: Main script logic.
+- `update_portfolio.py`: Script for daily incremental updates.
 - `requirements.txt`: Python dependencies.
 - `trade_source/`: Directory for input CSV files (Git-ignored for privacy).
 - `trade_output/`: Directory for generated Excel files (Git-ignored).

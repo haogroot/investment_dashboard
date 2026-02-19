@@ -442,7 +442,9 @@ def create_excel_dashboard(df_trades, market_data, df_ref, df_units, df_cash, co
                 if t_row in md_col_map and t_col in md_col_map:
                     col1 = md_col_map[t_row]
                     col2 = md_col_map[t_col]
-                    formula = f'=CORREL(Market_Data!{col1}2:{col1}{n_data_rows+1}, Market_Data!{col2}2:{col2}{n_data_rows+1})'
+                    # Use whole column references (e.g. B:B) to allow appending new data without breaking formulas
+                    # CORREL ignores text headers.
+                    formula = f'=CORREL(Market_Data!{col1}:{col1}, Market_Data!{col2}:{col2})'
                     ws_corr.write_formula(r+1, c+1, formula, workbook.add_format({'num_format': '0.00'}))
 
         ws_corr.conditional_format(1, 1, len(corr_tickers), len(corr_tickers), {
@@ -485,6 +487,11 @@ def create_excel_dashboard(df_trades, market_data, df_ref, df_units, df_cash, co
                 if t in md_col_map:
                     col = md_col_map[t]
                     # Formula: Price / MAX(Price_Start:Price_Today) - 1
+                    # Note: We still need dynamic range for MAX because it's "running max".
+                    # But the Update script will just copy the previous formula row and adjust cell refs.
+                    # Standard relative references work fine for row-by-row calc.
+                    # However, to be "update-friendly", we ensure the formula relies on relative row refs.
+                    # The current formula uses $2 constant start: MAX(Col$2:Col{row}). This is fine.
                     formula = f'=Market_Data!{col}{excel_row}/MAX(Market_Data!{col}$2:Market_Data!{col}{excel_row}) - 1'
                     ws_dd.write_formula(row, c+1, formula, fmt_pct)
 
@@ -505,8 +512,9 @@ def create_excel_dashboard(df_trades, market_data, df_ref, df_units, df_cash, co
                 c_ret = ret_col_map[t]
                 sp_ret = ret_col_map.get('SP500', c_ret)
                 
-                ret_rng = f'Daily_Returns!{c_ret}2:{c_ret}{n_ret_rows+1}'
-                bench_rng = f'Daily_Returns!{sp_ret}2:{sp_ret}{n_ret_rows+1}'
+                # Use whole column references (e.g. C:C) for Risk Metrics to auto-include new daily returns
+                ret_rng = f'Daily_Returns!{c_ret}:{c_ret}'
+                bench_rng = f'Daily_Returns!{sp_ret}:{sp_ret}'
                 
                 ws_risk.write(r, 0, t)
                 ws_risk.write_formula(r, 1, f'=AVERAGE({ret_rng})*252', fmt_pct)
@@ -516,7 +524,8 @@ def create_excel_dashboard(df_trades, market_data, df_ref, df_units, df_cash, co
                 
                 # Max Drawdown: MIN(Daily_Drawdowns!Col)
                 dd_col = ret_col_map[t]
-                ws_risk.write_formula(r, 5, f'=MIN(Daily_Drawdowns!{dd_col}2:{dd_col}{n_data_rows+1})', fmt_pct)
+                # MIN works with whole columns
+                ws_risk.write_formula(r, 5, f'=MIN(Daily_Drawdowns!{dd_col}:{dd_col})', fmt_pct)
                 ws_risk.write_formula(r, 6, f'=PERCENTILE.INC({ret_rng}, 0.05)', fmt_pct)
                 ws_risk.write_formula(r, 7, f'=PERCENTILE.INC({ret_rng}, 0.01)', fmt_pct)
                 ws_risk.write_formula(r, 8, f'=AVERAGEIF({ret_rng}, "<"&G{r+1})', fmt_pct)
