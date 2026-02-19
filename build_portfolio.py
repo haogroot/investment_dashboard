@@ -4,6 +4,7 @@ import xlsxwriter
 from datetime import datetime, timedelta
 import os
 
+import argparse
 from pathlib import Path
 
 # --- Configuration ---
@@ -18,13 +19,14 @@ START_DATE = "2024-06-06"
 # Ensure output directory exists
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-def load_process_data():
+def load_process_data(input_file=None):
     """Reads trade log and fetches market data."""
-    print(f"Reading trade log from {INPUT_FILE}...")
+    target_file = input_file if input_file else INPUT_FILE
+    print(f"Reading trade log from {target_file}...")
     try:
-        df_trades = pd.read_csv(INPUT_FILE, encoding='utf-8')
+        df_trades = pd.read_csv(target_file, encoding='utf-8')
     except UnicodeDecodeError:
-        df_trades = pd.read_csv(INPUT_FILE, encoding='big5')
+        df_trades = pd.read_csv(target_file, encoding='big5')
     except FileNotFoundError:
         print("Input file not found. Creating dummy data for structure verification.")
         df_trades = pd.DataFrame([
@@ -684,7 +686,26 @@ def create_excel_dashboard(df_trades, market_data, df_ref, df_units, df_cash, co
             pass
 
 if __name__ == "__main__":
-    df_trades, market_data, df_ref, all_dates = load_process_data()
+    # Parse Command Line Arguments
+    parser = argparse.ArgumentParser(description='Build Portfolio Dashboard')
+    parser.add_argument('input_file', nargs='?', default=None, help='Input trade CSV filename (default: configured INPUT_FILE)')
+    args = parser.parse_args()
+
+    # Resolve Input File Path if provided
+    input_path = None
+    if args.input_file:
+        arg_path = Path(args.input_file)
+        if arg_path.is_absolute():
+            input_path = arg_path
+        else:
+            # Assume relative to trade_source if just filename, or relative to cwd?
+            # User said "python3 build_portfolio.py fubin-trade_20260219.csv"
+            # It's safer to check current dir first, then trade_source?
+            # Or assume trade_source as default location for data.
+            input_path = BASE_DIR / "trade_source" / args.input_file
+
+    df_trades, market_data, df_ref, all_dates = load_process_data(input_file=input_path) 
+    
     if df_trades is not None:
         # Tickers for portfolio are those in df_ref (excluding SP500 if it was added separately, but df_ref is built from df_trades tickers)
         # However, df_ref is built in load_process_data from df_trades.Ticker.unique() BEFORE SP500 is fetched attached to market_data.

@@ -36,8 +36,14 @@ This Python project generates a comprehensive investment portfolio dashboard in 
 
 2.  **Run the Script**:
 
+    **Default (uses `fubon-trade_202602.csv`):**
     ```bash
     python build_portfolio.py
+    ```
+
+    **Specify a custom file (e.g., inside `trade_source/`):**
+    ```bash
+    python build_portfolio.py fubon-trade_20260219.csv
     ```
 
 3.  **View Results**:
