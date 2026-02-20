@@ -89,7 +89,9 @@ def generate_html_report(input_file=None):
     pages = [
         ('index.html', 'dashboard.html'),
         ('positions.html', 'positions.html'),
+        ('correlation_matrix.html', 'correlation_matrix.html'),
         ('risk.html', 'risk.html'),
+        ('stress_testing.html', 'stress_testing.html'),
         ('options.html', 'options.html'),
         ('sector_exposure.html', 'sector_exposure.html')
     ]

@@ -1,193 +1,175 @@
 {% extends "base.html" %}
 
+{% block extra_css %}
+<style>
+    /* Custom CSS for navigation cards */
+    .nav-card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        padding: 28px 24px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none;
+        color: var(--text-color);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .nav-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 12px 28px -6px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        border-color: rgba(59, 130, 246, 0.5);
+        /* blue-500 fading */
+        color: var(--text-color);
+    }
+
+    .nav-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary-color), #8b5cf6);
+        /* Blue to Purple */
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .nav-card:hover::before {
+        opacity: 1;
+    }
+
+    .nav-card .icon-wrapper {
+        font-size: 2.2rem;
+        margin-bottom: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .nav-card h4 {
+        font-weight: 600;
+        margin-bottom: 12px;
+        font-size: 1.25rem;
+        letter-spacing: -0.01em;
+    }
+
+    .nav-card p {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        line-height: 1.6;
+        margin-bottom: 0;
+        font-weight: 400;
+    }
+
+    .hero-section {
+        text-align: center;
+        padding: 60px 0 60px;
+    }
+
+    .hero-title {
+        font-weight: 700;
+        font-size: 2.75rem;
+        letter-spacing: -0.025em;
+        margin-bottom: 16px;
+        background: linear-gradient(to right, #f8fafc, #cbd5e1);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+        color: var(--text-muted);
+        font-size: 1.15rem;
+        max-width: 650px;
+        margin: 0 auto;
+        font-weight: 400;
+        line-height: 1.6;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="row mb-4">
-    <!-- Header -->
-    <div class="col-12">
-        <h2 class="mb-3" data-i18n="dashboard_title">Portfolio Overview</h2>
-    </div>
-
-    <!-- Summary Cards -->
-    <div class="col-md-3 col-6 mb-3">
-        <div class="card h-100 p-3">
-            <h6 class="text-muted" data-i18n="nav">Net Asset Value</h6>
-            <h3 class="privacy-sensitive">{{ data.dashboard.nav | currency }}</h3>
-            {% if data.dashboard.nav_twd %}
-            <div class="text-muted small mt-2">
-                <span class="privacy-sensitive">NT$ {{ '%.0f'|format(data.dashboard.nav_twd)|commas }}</span>
-                <br>
-                <span style="font-size: 0.8em;">(USD/TWD: {{ '%.2f'|format(data.dashboard.fx_rate) }})</span>
-            </div>
-            {% endif %}
-            <small class="text-muted">
-                <span data-i18n="cash">Cash</span>: <span class="privacy-sensitive">{{ data.dashboard.cash | currency
-                    }}</span>
-            </small>
-        </div>
-    </div>
-
-    <div class="col-md-3 col-6 mb-3">
-        <div class="card h-100 p-3">
-            <h6 class="text-muted" data-i18n="day_change">Day Change</h6>
-            <h3 class="{{ 'text-green' if data.dashboard.day_change_pct >= 0 else 'text-red' }}">
-                {{ data.dashboard.day_change_pct | pct }}
-            </h3>
-        </div>
-    </div>
-
-    <div class="col-md-3 col-6 mb-3">
-        <div class="card h-100 p-3">
-            <h6 class="text-muted" data-i18n="total_return">Total Return</h6>
-            <h3 class="{{ 'text-green' if data.dashboard.total_return_pct >= 0 else 'text-red' }}">
-                {{ data.dashboard.total_return_pct | pct }}
-            </h3>
-        </div>
-    </div>
-
-    <div class="col-md-3 col-6 mb-3">
-        <div class="card h-100 p-3">
-            <h6 class="text-muted" data-i18n="max_drawdown">Max Drawdown</h6>
-            <h3 class="text-danger">{{ data.dashboard.max_drawdown | pct }}</h3>
-            <small class="text-muted">
-                <span data-i18n="sharpe">Sharpe</span>: {{ "%.2f"|format(data.dashboard.sharpe) }}
-            </small>
-        </div>
+<div class="row hero-section">
+    <div class="col-12 fade-in">
+        <h1 class="hero-title" data-i18n="hero_title">Stock Portfolio Analytics Dashboard</h1>
+        <p class="hero-subtitle" data-i18n="hero_subtitle">Comprehensive portfolio analysis with risk metrics,
+            correlations, option hedging, and stress testing</p>
     </div>
 </div>
 
-<!-- Charts Row -->
-<div class="row mb-4">
-    <!-- NAV Chart -->
-    <div class="col-lg-8 mb-4">
-        <div class="card h-100 p-3">
-            <h5 data-i18n="nav_history">NAV History</h5>
-            <div style="height: 300px;">
-                <canvas id="navChart"></canvas>
-            </div>
-        </div>
+<div class="row g-4 mb-5 fade-in" style="animation-delay: 0.1s;">
+    <!-- Positions -->
+    <div class="col-md-6 col-lg-4">
+        <a href="positions.html" class="nav-card">
+            <div class="icon-wrapper">📊</div>
+            <h4 data-i18n="nav_positions">Positions</h4>
+            <p data-i18n="desc_positions">All portfolio positions: stocks, ETFs, mutual funds, cash. Market values,
+                weights, beta, and industry. Sortable columns.</p>
+        </a>
     </div>
 
-    <!-- Allocation Chart -->
-    <div class="col-lg-4 mb-4">
-        <div class="card h-100 p-3">
-            <h5 data-i18n="allocation">Allocation</h5>
-            <div style="height: 300px; position: relative;">
-                <canvas id="allocationChart"></canvas>
-            </div>
-        </div>
+    <!-- Options -->
+    <div class="col-md-6 col-lg-4">
+        <a href="options.html" class="nav-card">
+            <div class="icon-wrapper">📋</div>
+            <h4 data-i18n="nav_options">Options</h4>
+            <p data-i18n="desc_options">All option contracts with delta exposure analysis. Calls, puts, spreads, and
+                their hedging impact on the portfolio.</p>
+        </a>
     </div>
-</div>
 
-<!-- Top Holdings (Mini Table) -->
-<div class="row">
-    <div class="col-12">
-        <div class="card p-3">
-            <h5 data-i18n="top_positions">Top Positions</h5>
-            <div class="table-responsive">
-                <table class="table table-hover table-borderless">
-                    <thead>
-                        <tr>
-                            <th data-i18n="ticker">Ticker</th>
-                            <th data-i18n="name">Name</th>
-                            <th data-i18n="sector">Sector</th>
-                            <th class="text-end" data-i18n="price">Price</th>
-                            <th class="text-end" data-i18n="mkt_val">Market Value</th>
-                            <th class="text-end" data-i18n="weight">Weight</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for pos in data.positions[:5] %}
-                        <tr>
-                            <td class="fw-bold">{{ pos.ticker }}</td>
-                            <td>{{ pos.name }}</td>
-                            <td>{{ pos.sector }}</td>
-                            <td class="text-end privacy-sensitive">{{ pos.price | currency }}</td>
-                            <td class="text-end privacy-sensitive">{{ pos.market_value | currency }}</td>
-                            <td class="text-end">{{ pos.weight | pct }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            <div class="text-end mt-2">
-                <a href="positions.html" class="btn btn-sm btn-outline-primary" data-i18n="view_all">View All</a>
-            </div>
-        </div>
+    <!-- Correlation Matrix -->
+    <div class="col-md-6 col-lg-4">
+        <!-- Optional: we can generate this page later, using placeholder href for now -->
+        <a href="correlation_matrix.html" class="nav-card">
+            <div class="icon-wrapper">🔗</div>
+            <h4 data-i18n="nav_correlation">Correlation Matrix</h4>
+            <p data-i18n="desc_correlation">Pairwise return correlations with heatmap. Click tickers to sort. Hover
+                cells for ticker pair details.</p>
+        </a>
+    </div>
+
+    <!-- Risk Metrics -->
+    <div class="col-md-6 col-lg-4">
+        <a href="risk.html" class="nav-card">
+            <div class="icon-wrapper">⚠</div>
+            <h4 data-i18n="nav_risk">Risk Metrics</h4>
+            <p data-i18n="desc_risk">VaR, Sharpe, Sortino, Calmar, Maximum Drawdown, Beta, option hedging impact. Hover
+                cards for term explanations.</p>
+        </a>
+    </div>
+
+    <!-- Stress Testing -->
+    <div class="col-md-6 col-lg-4">
+        <a href="stress_testing.html" class="nav-card">
+            <div class="icon-wrapper">🔥</div>
+            <h4 data-i18n="nav_stress">Stress Testing</h4>
+            <p data-i18n="desc_stress">Scenario analysis from -50% crash to +50% rally, showing both unhedged and
+                option-hedged impacts with 1Y return context.</p>
+        </a>
+    </div>
+
+    <!-- Sector Exposure -->
+    <div class="col-md-6 col-lg-4">
+        <a href="sector_exposure.html" class="nav-card">
+            <div class="icon-wrapper">🏷</div>
+            <h4 data-i18n="nav_sector">Sector & Exposure</h4>
+            <p data-i18n="desc_sector">Portfolio breakdown by sector allocation (incl. option notional), currency
+                denomination, and brokerage account.</p>
+        </a>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    // Prepare Data from Jinja
-    const navHistory = {{ data.dashboard.history | tojson }};
-    const sectors = {{ data.sectors | tojson }};
-
-    // NAV Chart
-    const ctxNav = document.getElementById('navChart').getContext('2d');
-    new Chart(ctxNav, {
-        type: 'line',
-        data: {
-            labels: navHistory.map(d => d.date),
-            datasets: [{
-                label: 'NAV',
-                data: navHistory.map(d => d.nav),
-                borderColor: '#0d6efd',
-                backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.1,
-                pointRadius: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            scales: {
-                x: {
-                    grid: { color: '#333' },
-                    ticks: { color: '#aaa' }
-                },
-                y: {
-                    grid: { color: '#333' },
-                    ticks: { color: '#aaa' }
-                }
-            }
-        }
-    });
-
-    // Allocation Chart
-    const ctxAlloc = document.getElementById('allocationChart').getContext('2d');
-    new Chart(ctxAlloc, {
-        type: 'doughnut',
-        data: {
-            labels: sectors.map(s => s.sector),
-            datasets: [{
-                data: sectors.map(s => s.value),
-                backgroundColor: [
-                    '#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f',
-                    '#edc948', '#b07aa1', '#ff9da7', '#9c755f', '#bab0ac'
-                ],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: { color: '#e0e0e0' }
-                }
-            }
-        }
-    });
-</script>
 {% endblock %}

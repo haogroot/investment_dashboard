@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-5 fade-in">
+    <div class="col-12">
+        <h2 class="hero-title mb-4" data-i18n="nav_stress" style="font-size: 2.2rem; text-align: left;">Stress Testing
+        </h2>
+
+        <p class="text-muted mb-4" data-i18n="desc_stress">Scenario analysis from -50% crash to +50% rally, showing both
+            unhedged and option-hedged impacts with 1Y return context.</p>
+
+        <!-- Stress Testing Table -->
+        <div class="card p-4">
+            <h5 data-i18n="stress_test" class="mb-3">Stress Testing (Beta Sensitivity)</h5>
+            <div class="table-responsive">
+                <table class="table table-hover table-borderless align-middle">
+                    <thead>
+                        <tr class="border-bottom">
+                            <th data-i18n="scenario">Scenario</th>
+                            <th class="text-end" data-i18n="market_chg">Market Move</th>
+                            <th class="text-end" data-i18n="unhedged_impact">Unhedged Impact</th>
+                            <th class="text-end" data-i18n="hedged_impact">Hedged Impact</th>
+                            <th class="text-end" data-i18n="hedged_pnl">Est. Hedged P&L (USD)</th>
+                            <th class="text-end" data-i18n="net_nav">Est. Net NAV (USD)</th>
+                            <th class="text-end" data-i18n="hedging_benefit">Hedging Benefit (USD)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for res in data.stress_test %}
+                        <tr>
+                            <td><strong>{{ res.scenario }}</strong></td>
+                            <td class="text-end">{{ res.market_change | pct }}</td>
+                            <td class="text-end {{ 'text-green' if res.unhedged_change >= 0 else 'text-red' }}">
+                                {{ res.unhedged_change | pct }}
+                            </td>
+                            <td class="text-end fw-bold {{ 'text-green' if res.hedged_change >= 0 else 'text-red' }}">
+                                {{ res.hedged_change | pct }}
+                            </td>
+                            <td
+                                class="text-end privacy-sensitive {{ 'text-green' if res.hedged_pnl >= 0 else 'text-red' }}">
+                                {{ res.hedged_pnl | currency }}
+                            </td>
+                            <td class="text-end privacy-sensitive fw-bold text-light">
+                                {{ res.est_nav | currency }}
+                            </td>
+                            <td
+                                class="text-end privacy-sensitive {{ 'text-green' if res.hedging_benefit > 0 else 'text-muted' }}">
+                                +{{ res.hedging_benefit | currency }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 pt-3 border-top">
+                <p class="small text-muted mb-1"><i class="fas fa-info-circle me-1"></i> <span
+                        data-i18n="stress_note_1">Unhedged Impact is purely based on the constituent equity/ETF betas
+                        relative to the market move.</span></p>
+                <p class="small text-muted mb-0"><i class="fas fa-info-circle me-1"></i> <span
+                        data-i18n="stress_note_2">Hedged Impact includes the estimated intrinsic value change of Option
+                        positions at expiration.</span></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const stressTranslations = {
+        en: {
+            unhedged_impact: "Unhedged Impact",
+            hedged_impact: "Hedged Impact",
+            hedged_pnl: "Hedged P&L (USD)",
+            net_nav: "Net NAV (USD)",
+            hedging_benefit: "Hedging Benefit (USD)",
+            stress_note_1: "Unhedged Impact is purely based on the constituent equity/ETF betas relative to the market move.",
+            stress_note_2: "Hedged Impact includes the estimated intrinsic value change of Option positions at expiration."
+        },
+        zh: {
+            unhedged_impact: "未避險預估影響",
+            hedged_impact: "含避險預估影響",
+            hedged_pnl: "含避險預估損益 (USD)",
+            net_nav: "預估總淨值 (USD)",
+            hedging_benefit: "避險效益 (USD)",
+            stress_note_1: "未避險預估影響純粹以股票與 ETF 相對於大盤變動的 Beta 值進行推算。",
+            stress_note_2: "含避險預估影響包含了選擇權部位於到期時的預估內含價值變化。"
+        }
+    };
+
+    if (typeof translations !== 'undefined') {
+        Object.assign(translations.en, stressTranslations.en);
+        Object.assign(translations.zh, stressTranslations.zh);
+
+        if (typeof updateLanguage === 'function') {
+            updateLanguage();
+        }
+    }
+</script>
+{% endblock %}

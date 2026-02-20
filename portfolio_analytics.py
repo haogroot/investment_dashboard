@@ -56,7 +56,12 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
     
     positions = []
     options = [] 
+    # Extracted fx rate early for TWD value calculation
+    fx_rate = market_data['TWD=X'].ffill().iloc[-1] if 'TWD=X' in market_data.columns else 0
+
     portfolio_weight_total = 0
+    stock_count = 0
+    etf_count = 0
     
     for ticker in df_units.columns:
         units = last_units.get(ticker, 0)
@@ -69,9 +74,16 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
         name = ref_row['Name'].values[0] if not ref_row.empty else ticker
         sector = ref_row['Sector'].values[0] if not ref_row.empty else 'Unknown'
         country = ref_row['Country'].values[0] if not ref_row.empty else 'Unknown'
+        beta = ref_row['Beta'].values[0] if (not ref_row.empty and 'Beta' in ref_row) else 1.0
         asset_type = ref_row['Type'].values[0] if not ref_row.empty else 'EQUITY'
         strike = ref_row['Strike'].values[0] if not ref_row.empty and 'Strike' in ref_row.columns else 0
         expiry = ref_row['Expiry'].values[0] if not ref_row.empty and 'Expiry' in ref_row.columns else '-'
+        
+        # Determine Stock vs ETF
+        if asset_type == 'ETF':
+            etf_count += 1
+        elif asset_type == 'EQUITY':
+            stock_count += 1
         
         # Market Value Calculation
         # Assume US Options have multiplier 100.
@@ -122,10 +134,12 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
             'avg_cost': avg_cost,
             'price': price,
             'market_value': market_val,
+            'market_value_twd': market_val * fx_rate,
             'unrealized_pnl': unrealized_pnl,
             'pnl_pct': pnl_pct,
             'weight': weight,
             'type': asset_type,
+            'beta': beta,
             'strike': strike,
             'expiry': expiry
         }
@@ -172,17 +186,21 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
     else:
         correlation_data = []
 
-    # 6. Stress Test (Simulated)
-    # Simple Beta-based stress test if we had Beta. 
-    # For now, let's just do a simple scenario Analysis based on Sector?
-    # Or just placeholder 0s if we don't calculating Beta yet.
-    # build_portfolio has Beta calc in `Risk Metrics` sheet logic?
-    # Let's check `calculate_portfolio_state` doesn't do beta.
-    # The Excel formula uses `SLOPE` against SP500.
-    # We can calc Beta here using numpy.
-    
-    # Fetch SP500 (assuming it's in market_data or we need to pass it)
-    # build_portfolio puts SP500 in market_data if it fetched it.
+    # 6. Stress Test (Simulated with Option Hedging)
+    stress_results = []
+    scenarios = [
+        ('Crash', -0.50),
+        ('Severe Bear', -0.40),
+        ('Bear', -0.30),
+        ('Correction', -0.20),
+        ('Pullback', -0.10),
+        ('Flat', 0.0),
+        ('Rally', 0.10),
+        ('Strong Rally', 0.20),
+        ('Bull', 0.30),
+        ('Euphoria', 0.40),
+        ('Bubble', 0.50)
+    ]
     
     if 'SP500' in market_data.columns:
         benchmark = market_data['SP500'].pct_change().fillna(0)
@@ -190,45 +208,178 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
         benchmark = market_data['^GSPC'].pct_change().fillna(0)
     else:
         benchmark = None
-        
-    stress_results = []
-    scenarios = [
-        ('Market Crash', -0.20),
-        ('Correction', -0.10),
-        ('Rally', 0.10),
-        ('Bull Run', 0.20)
-    ]
-    
+
+    # Pre-calculate Portfolio Beta for flat benchmark fallback
+    port_beta = 1.0
     if benchmark is not None:
-        # Calculate Portfolio Beta
-        # Port Returns vs Bench Returns
-        # Start from when we have valid data
-        
-        # Using daily_rets calculated above for NAV
-        # We need to align benchmark to daily_rets
         aligned_df = pd.concat([daily_rets, benchmark], axis=1, join='inner').dropna()
         if not aligned_df.empty:
-            port_ret = aligned_df.iloc[:, 0]
-            bench_ret = aligned_df.iloc[:, 1]
-            
-            cov = np.cov(port_ret, bench_ret)[0][1]
-            var = np.var(bench_ret)
+            cov = np.cov(aligned_df.iloc[:, 0], aligned_df.iloc[:, 1])[0][1]
+            var = np.var(aligned_df.iloc[:, 1])
             port_beta = cov / var if var > 0 else 1.0
-        else:
-            port_beta = 1.0
+
+    for sc_name, chg in scenarios:
+        unhedged_pnl = 0
+        hedged_pnl = 0
+        
+        for pos in positions:
+            t = pos['ticker']
+            p_type = pos.get('type', 'EQUITY')
+            base_mv = pos.get('market_value', 0)
+            shares = pos.get('shares', 0)
             
-        for sc_name, chg in scenarios:
-            est_change_pct = chg * port_beta
-            est_pl = est_change_pct * current_nav
-            est_nav = current_nav + est_pl
-            stress_results.append({
-                'scenario': sc_name,
-                'market_change': chg,
-                'est_portfolio_change': est_change_pct,
-                'est_pnl': est_pl,
-                'est_nav': est_nav
-            })
+            if p_type in ['EQUITY', 'ETF']:
+                beta_to_use = pos.get('beta', 1.0)
+                if np.isnan(beta_to_use): beta_to_use = 1.0
+                asset_chg = chg * beta_to_use
+                est_pnl = base_mv * asset_chg
+                
+                unhedged_pnl += est_pnl
+                hedged_pnl += est_pnl
+                
+            elif p_type == 'OPTION':
+                strike = float(pos.get('strike', 0))
+                # Try to infer underlying from standard 21-char OPRA symbol
+                underlying = t[:-15] if len(t) > 15 else t
+                ul_price = last_prices.get(underlying, 0)
+                
+                is_put = 'P' in t[-9:-8] if len(t) > 15 else False
+                is_call = 'C' in t[-9:-8] if len(t) > 15 else False
+                
+                if strike > 0 and ul_price > 0:
+                    # Find underlying beta
+                    ul_beta = 1.0
+                    for p2 in positions:
+                        if p2['ticker'] == underlying:
+                            ul_beta = p2.get('beta', 1.0)
+                            break
+                    
+                    new_ul_price = ul_price * (1 + chg * ul_beta)
+                    
+                    # Estimate intrinsic value at expiration
+                    if is_put:
+                        new_opt_price = max(0, strike - new_ul_price)
+                    elif is_call:
+                        new_opt_price = max(0, new_ul_price - strike)
+                    else:
+                        new_opt_price = pos['price']
+                    
+                    new_mv = shares * new_opt_price * 100
+                    opt_pnl = new_mv - base_mv
+                    hedged_pnl += opt_pnl
+                else:
+                    # Fallback to simple beta if option lacks strike/underlying
+                    beta_to_use = pos.get('beta', 0.0)
+                    if np.isnan(beta_to_use): beta_to_use = 0.0
+                    opt_pnl = base_mv * (chg * beta_to_use)
+                    hedged_pnl += opt_pnl
+
+        est_hedged_nav = current_nav + hedged_pnl
+        
+        stress_results.append({
+            'scenario': sc_name,
+            'market_change': chg,
+            'unhedged_pnl': unhedged_pnl,
+            'hedged_pnl': hedged_pnl,
+            'unhedged_change': unhedged_pnl / current_nav if current_nav > 0 else 0,
+            'hedged_change': hedged_pnl / current_nav if current_nav > 0 else 0,
+            'hedging_benefit': hedged_pnl - unhedged_pnl,
+            'est_nav': est_hedged_nav
+        })
+            
+    # --- Advanced Risk Metrics ---
+    # We define a few helpers
+    rf_rate = 0.043 # 4.3% Risk-free rate (matches online)
     
+    # Portfolio Return & Volatility (Annualized)
+    ann_return = 0
+    ann_volatility = 0
+    sortino = 0
+    calmar = 0
+    var_95 = 0
+    var_99 = 0
+    cvar_95 = 0
+    skewness = 0
+    kurtosis = 0
+    
+    if len(nav_series) > 1:
+        daily_rets = nav_series.pct_change().dropna()
+        if not daily_rets.empty:
+            ann_return = daily_rets.mean() * 252
+            ann_volatility = daily_rets.std() * np.sqrt(252)
+            
+            # Sortino
+            downside_rets = daily_rets[daily_rets < 0]
+            downside_std = downside_rets.std() * np.sqrt(252)
+            if downside_std > 0:
+                sortino = (ann_return - rf_rate) / downside_std
+            
+            # Calmar
+            if max_dd < 0:
+                calmar = ann_return / abs(max_dd)
+                
+            # VaR & CVaR
+            var_95 = np.percentile(daily_rets, 5)
+            var_99 = np.percentile(daily_rets, 1)
+            cvar_95 = daily_rets[daily_rets <= var_95].mean()
+            
+            # Skew & Kurtosis
+            skewness = daily_rets.skew()
+            kurtosis = daily_rets.kurtosis()
+            
+    # Calculate per-position risk metrics
+    for pos in positions:
+        t = pos['ticker']
+        if t in market_aligned.columns:
+            prices = market_aligned[t].dropna()
+            if len(prices) > 1:
+                p_rets = prices.pct_change().dropna()
+                
+                pos['ann_return'] = p_rets.mean() * 252
+                pos['ann_volatility'] = p_rets.std() * np.sqrt(252)
+                
+                p_sharpe = 0
+                if p_rets.std() > 0:
+                    p_sharpe = (p_rets.mean() * 252 - rf_rate) / (p_rets.std() * np.sqrt(252))
+                pos['sharpe'] = p_sharpe
+                
+                # Max DD
+                roll_max = prices.cummax()
+                dd = (prices - roll_max) / roll_max
+                pos['max_drawdown'] = dd.min()
+                
+                # VaR 95
+                if not p_rets.empty:
+                    pos['var_95'] = np.percentile(p_rets, 5)
+                else:
+                    pos['var_95'] = 0
+                
+                # Beta
+                if benchmark is not None and not benchmark.empty:
+                    aligned = pd.concat([p_rets, benchmark], axis=1, join='inner').dropna()
+                    if not aligned.empty:
+                        cov = np.cov(aligned.iloc[:, 0], aligned.iloc[:, 1])[0][1]
+                        var = np.var(aligned.iloc[:, 1])
+                        pos['beta'] = cov / var if var > 0 else 1.0
+                    else:
+                        pos['beta'] = 1.0
+                else:
+                    pos['beta'] = 1.0
+            else:
+                pos['ann_return'] = 0
+                pos['ann_volatility'] = 0
+                pos['sharpe'] = 0
+                pos['max_drawdown'] = 0
+                pos['var_95'] = 0
+                pos['beta'] = 1.0
+        else:
+            pos['ann_return'] = 0
+            pos['ann_volatility'] = 0
+            pos['sharpe'] = 0
+            pos['max_drawdown'] = 0
+            pos['var_95'] = 0
+            pos['beta'] = 1.0
+
     return {
         'dashboard': {
             'date': last_date.strftime('%Y-%m-%d'),
@@ -239,9 +390,22 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
             'total_return_pct': total_return,
             'max_drawdown': max_dd,
             'sharpe': sharpe,
+            'stock_count': stock_count,
+            'etf_count': etf_count,
             'history': [{'date': d.strftime('%Y-%m-%d'), 'nav': v} for d, v in nav_series.items()],
-            'nav_twd': current_nav * market_data['TWD=X'].ffill().iloc[-1] if 'TWD=X' in market_data.columns else 0,
-            'fx_rate': market_data['TWD=X'].ffill().iloc[-1] if 'TWD=X' in market_data.columns else 0
+            'nav_twd': current_nav * fx_rate,
+            'fx_rate': fx_rate,
+            # New Advanced Metrics
+            'ann_return': ann_return,
+            'ann_volatility': ann_volatility,
+            'sortino': sortino,
+            'calmar': calmar,
+            'var_95': var_95,
+            'var_99': var_99,
+            'cvar_95': cvar_95,
+            'skewness': skewness,
+            'kurtosis': kurtosis,
+            'beta': port_beta if benchmark is not None else 1.0
         },
         'positions': positions,
         'options': options,

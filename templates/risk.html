@@ -1,112 +1,265 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row mb-5">
+<div class="row mb-5 fade-in">
     <div class="col-12">
-        <h2 class="mb-4" data-i18n="risk_title">Risk Metrics & Analytics</h2>
+        <h2 class="hero-title mb-4" data-i18n="risk_title" style="font-size: 2.2rem; text-align: left;">Risk Metrics &
+            Analytics</h2>
 
-        <!-- Correlation Matrix -->
-        <div class="card p-3 mb-4">
-            <h5 data-i18n="correlation_matrix">Correlation Matrix (1 Year)</h5>
+        <style>
+            .metric-label {
+                text-decoration: underline dotted;
+                cursor: help;
+            }
+        </style>
+
+        <!-- Risk Metrics Overview Cards -->
+        <div class="row mb-4">
+            <!-- Portfolio Overview -->
+            <div class="col-md-3 mb-3">
+                <div class="card h-100 p-3">
+                    <h6 class="text-muted mb-2" data-i18n="port_overview">Portfolio Overview</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="metric-label" data-i18n="ann_return" data-i18n-title="tt_ann_return">Annualized
+                            Return</span>
+                        <span class="fw-bold {{ 'text-green' if data.dashboard.ann_return >= 0 else 'text-red' }}">
+                            {{ data.dashboard.ann_return | pct }}
+                        </span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="metric-label" data-i18n="ann_volatility"
+                            data-i18n-title="tt_ann_volatility">Annualized Vol</span>
+                        <span class="fw-bold text-warning">{{ data.dashboard.ann_volatility | pct }}</span>
+                    </div>
+                    <div
+                        class="d-flex justify-content-between align-items-center mb-1 mt-2 pt-2 border-top border-secondary">
+                        <span data-i18n="total_value_usd">Total Value (USD)</span>
+                        <span class="fw-bold privacy-sensitive">{{ data.dashboard.nav | currency }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span data-i18n="total_value_ntd">Total Value (NTD)</span>
+                        <span class="fw-bold privacy-sensitive">NT{{ data.dashboard.nav_twd | currency }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk-Adjusted Returns -->
+            <div class="col-md-3 mb-3">
+                <div class="card h-100 p-3">
+                    <h6 class="text-muted mb-2" data-i18n="risk_adj_ret">Risk-Adjusted Returns</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="metric-label" data-i18n="sharpe" data-i18n-title="tt_sharpe">Sharpe Ratio</span>
+                        <span class="fw-bold">{{ '%.2f'|format(data.dashboard.sharpe) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="metric-label" data-i18n="sortino" data-i18n-title="tt_sortino">Sortino Ratio</span>
+                        <span class="fw-bold">{{ '%.2f'|format(data.dashboard.sortino) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="metric-label" data-i18n="calmar" data-i18n-title="tt_calmar">Calmar Ratio</span>
+                        <span class="fw-bold">{{ '%.2f'|format(data.dashboard.calmar) }}</span>
+                    </div>
+                    <div
+                        class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-secondary">
+                        <span class="metric-label" data-i18n="max_dd" data-i18n-title="tt_max_dd">Max Drawdown</span>
+                        <span class="fw-bold text-red">{{ data.dashboard.max_drawdown | pct }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Value at Risk -->
+            <div class="col-md-3 mb-3">
+                <div class="card h-100 p-3">
+                    <h6 class="text-muted mb-2" data-i18n="var_title">Value at Risk (Daily)</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="metric-label" data-i18n="var_95" data-i18n-title="tt_var_95">VaR 95%</span>
+                        <span class="fw-bold text-red">{{ data.dashboard.var_95 | pct }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="metric-label" data-i18n="var_99" data-i18n-title="tt_var_99">VaR 99%</span>
+                        <span class="fw-bold text-red">{{ data.dashboard.var_99 | pct }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="metric-label" data-i18n="cvar_95" data-i18n-title="tt_cvar_95">CVaR 95%</span>
+                        <span class="fw-bold text-red">{{ data.dashboard.cvar_95 | pct }}</span>
+                    </div>
+                    <div
+                        class="d-flex justify-content-between align-items-center mt-1 pt-2 border-top border-secondary">
+                        <span class="metric-label" data-i18n="beta_port" data-i18n-title="tt_beta_port">Portfolio
+                            Beta</span>
+                        <span class="fw-bold">{{ '%.2f'|format(data.dashboard.beta) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Distribution Shape -->
+            <div class="col-md-3 mb-3">
+                <div class="card h-100 p-3">
+                    <h6 class="text-muted mb-2" data-i18n="dist_shape">Distribution Shape</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="metric-label" data-i18n="skewness" data-i18n-title="tt_skewness">Skewness</span>
+                        <span class="fw-bold">{{ '%.2f'|format(data.dashboard.skewness) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="metric-label" data-i18n="kurtosis" data-i18n-title="tt_kurtosis">Kurtosis</span>
+                        <span class="fw-bold">{{ '%.2f'|format(data.dashboard.kurtosis) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Individual Position Risk -->
+        <div class="card p-4 mb-4">
+            <h5 data-i18n="indiv_pos_risk" class="mb-3">Individual Position Risk</h5>
             <div class="table-responsive">
-                <table class="table table-bordered text-center table-sm" style="font-size: 0.9em;">
+                <table class="table table-hover table-borderless align-middle sortable">
                     <thead>
                         <tr>
-                            <th></th>
-                            {% for row in data.correlation %}
-                            <th>{{ row.ticker }}</th>
-                            {% endfor %}
+                            <th data-i18n="ticker" class="cursor-pointer">Ticker <i
+                                    class="fas fa-sort text-muted ms-1"></i></th>
+                            <th class="text-end cursor-pointer metric-label" data-i18n="ann_return"
+                                data-i18n-title="tt_ann_return">Ann. Return <i class="fas fa-sort text-muted ms-1"></i>
+                            </th>
+                            <th class="text-end cursor-pointer metric-label" data-i18n="ann_volatility"
+                                data-i18n-title="tt_ann_volatility">Ann. Vol <i class="fas fa-sort text-muted ms-1"></i>
+                            </th>
+                            <th class="text-end cursor-pointer metric-label" data-i18n="sharpe"
+                                data-i18n-title="tt_sharpe">Sharpe <i class="fas fa-sort text-muted ms-1"></i></th>
+                            <th class="text-end cursor-pointer metric-label" data-i18n="max_dd"
+                                data-i18n-title="tt_max_dd">Max DD <i class="fas fa-sort text-muted ms-1"></i></th>
+                            <th class="text-end cursor-pointer metric-label" data-i18n="var_95"
+                                data-i18n-title="tt_var_95">VaR 95% <i class="fas fa-sort text-muted ms-1"></i></th>
+                            <th class="text-end cursor-pointer metric-label" data-i18n="beta"
+                                data-i18n-title="tt_beta_port">Beta <i class="fas fa-sort text-muted ms-1"></i></th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for row in data.correlation %}
+                        {% for pos in data.positions %}
                         <tr>
-                            <th class="text-start">{{ row.ticker }}</th>
-                            {% for cell in row.corr_cells %}
-                            {% set val = cell.val %}
-                            {# Color logic: Blue for positive, Red for negative. Opacity = abs(val) #}
-                            {% set bg_color = 'rgba(68, 114, 196, ' ~ val|abs ~ ')' if val >= 0 else 'rgba(231, 76, 60,
-                            ' ~ val|abs ~ ')' %}
-                            {# Text color: White if abs(val) > 0.5 else text-color #}
-                            {% set txt_color = '#fff' if val|abs > 0.5 else 'var(--text-color)' %}
-
-                            <td style="background-color: {{ bg_color }}; color: {{ txt_color }};"
-                                title="{{ row.ticker }} vs {{ cell.target }}: {{ '%.2f'|format(val) }}">
-                                {{ "%.2f"|format(val) }}
-                            </td>
-                            {% endfor %}
+                            <td><strong>{{ pos.ticker }}</strong></td>
+                            <td class="text-end {{ 'text-green' if pos.ann_return >= 0 else 'text-red' }}">{{
+                                pos.ann_return | pct }}</td>
+                            <td class="text-end text-warning">{{ pos.ann_volatility | pct }}</td>
+                            <td class="text-end">{{ '%.2f'|format(pos.sharpe) }}</td>
+                            <td class="text-end text-red">{{ pos.max_drawdown | pct }}</td>
+                            <td class="text-end text-red">{{ pos.var_95 | pct }}</td>
+                            <td class="text-end">{{ '%.2f'|format(pos.beta) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-            <small class="text-muted" data-i18n="correlation_desc">
-                * Based on daily returns over the last 252 trading days.
-            </small>
         </div>
 
-        <!-- Stress Testing -->
-        <div class="card p-3">
-            <h5 data-i18n="stress_test">Stress Testing (Beta Sensitivity)</h5>
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th data-i18n="scenario">Scenario</th>
-                            <th class="text-end" data-i18n="market_chg">Market Move</th>
-                            <th class="text-end" data-i18n="est_port_chg">Est. Portfolio Move</th>
-                            <th class="text-end" data-i18n="est_pnl">Est. P&L</th>
-                            <th class="text-end" data-i18n="est_nav">Est. NAV</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for res in data.stress_test %}
-                        <tr>
-                            <td>{{ res.scenario }}</td>
-                            <td class="text-end">{{ res.market_change | pct }}</td>
-                            <td class="text-end {{ 'text-green' if res.est_portfolio_change >= 0 else 'text-red' }}">
-                                {{ res.est_portfolio_change | pct }}
-                            </td>
-                            <td
-                                class="text-end privacy-sensitive {{ 'text-green' if res.est_pnl >= 0 else 'text-red' }}">
-                                {{ res.est_pnl | currency }}
-                            </td>
-                            <td class="text-end privacy-sensitivefw-bold">{{ res.est_nav | currency }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
+    // Simple table sorting logic
+    document.addEventListener('DOMContentLoaded', function () {
+        const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
+
+        const comparer = (idx, asc) => (a, b) => ((v1, v2) =>
+            v1 !== '' && v2 !== '' && !isNaN(v1) && !isNaN(v2) ? v1 - v2 : v1.toString().localeCompare(v2)
+        )(getCellValue(asc ? a : b, idx).replace(/[%,$A-Za-z]/g, ''), getCellValue(asc ? b : a, idx).replace(/[%,$A-Za-z]/g, ''));
+
+        document.querySelectorAll('th.cursor-pointer').forEach(th => th.addEventListener('click', (() => {
+            const table = th.closest('table');
+            Array.from(table.querySelectorAll('tbody tr'))
+                .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
+                .forEach(tr => table.querySelector('tbody').appendChild(tr));
+        })));
+    });
+
     // Additional translations for Risk page
     const riskTranslations = {
         en: {
             risk_title: "Risk Metrics & Analytics",
-            correlation_matrix: "Correlation Matrix (1 Year)",
-            correlation_desc: "* Based on daily returns over the last 252 trading days.",
+            port_overview: "Portfolio Overview",
+            ann_return: "Annualized Return",
+            ann_volatility: "Annualized Volatility",
+            total_value_usd: "Total Value (USD)",
+            total_value_ntd: "Total Value (NTD)",
+            risk_adj_ret: "Risk-Adjusted Returns",
+            sharpe: "Sharpe Ratio",
+            sortino: "Sortino Ratio",
+            calmar: "Calmar Ratio",
+            max_dd: "Max Drawdown",
+            var_title: "Value at Risk (Daily)",
+            var_95: "VaR 95%",
+            var_99: "VaR 99%",
+            cvar_95: "CVaR 95%",
+            beta_port: "Portfolio Beta",
+            dist_shape: "Distribution Shape",
+            skewness: "Skewness",
+            kurtosis: "Kurtosis",
+            indiv_pos_risk: "Individual Position Risk",
+            beta: "Beta",
             stress_test: "Stress Testing (Beta Sensitivity)",
             scenario: "Scenario",
             market_chg: "Market Move",
             est_port_chg: "Est. Portfolio Move",
-            est_pnl: "Est. P&L",
-            est_nav: "Est. NAV",
-            ticker: "Ticker"
+            est_pnl: "Est. P&L (USD)",
+            est_pnl_ntd: "Est. P&L (NTD)",
+            ticker: "Ticker",
+            // Tooltip Explanations
+            tt_ann_return: "Average annualized return calculated from daily historical data.",
+            tt_ann_volatility: "Overall statistical dispersion (risk) of returns, annualized.",
+            tt_sharpe: "Measures risk-adjusted return relative to volatility. Higher is better.",
+            tt_sortino: "Similar to Sharpe Ratio, but only penalizes negative volatility (downside risk).",
+            tt_calmar: "Ratio of annualized return to maximum drawdown risk.",
+            tt_max_dd: "Maximum observed loss from a peak to a trough of the portfolio.",
+            tt_var_95: "Maximum expected single-day loss at 95% confidence level.",
+            tt_var_99: "Maximum expected single-day loss at 99% confidence level.",
+            tt_cvar_95: "Conditional VaR: The expected loss given that the VaR 95% threshold is crossed.",
+            tt_beta_port: "Volatility relative to the S&P 500 benchmark. >1 is more volatile, <1 is less volatile.",
+            tt_skewness: "Measures asymmetry of returns. Positive means large gains are more common; negative means large losses are more common.",
+            tt_kurtosis: "Measures tail risk. High kurtosis indicates extreme price movements (fat tails) happen more often than a normal distribution."
         },
         zh: {
             risk_title: "風險指標與分析",
-            correlation_matrix: "相關性矩陣 (近一年)",
-            correlation_desc: "* 基於最近 252 個交易日的日報酬率計算。",
+            port_overview: "投資組合概況",
+            ann_return: "年化報酬率",
+            ann_volatility: "年化波動率",
+            total_value_usd: "總市值 (USD)",
+            total_value_ntd: "總市值 (NTD)",
+            risk_adj_ret: "風險調整後報酬",
+            sharpe: "夏普比率",
+            sortino: "索提諾比率",
+            calmar: "卡瑪比率",
+            max_dd: "最大回撤",
+            var_title: "風險價值 (單日)",
+            var_95: "VaR 95%",
+            var_99: "VaR 99%",
+            cvar_95: "CVaR 95%",
+            beta_port: "投資組合 Beta",
+            dist_shape: "分配型態",
+            skewness: "偏態 (Skewness)",
+            kurtosis: "峰度 (Kurtosis)",
+            indiv_pos_risk: "個別部位風險",
+            beta: "Beta",
             stress_test: "壓力測試 (Beta 敏感度)",
             scenario: "情境",
             market_chg: "市場變動",
             est_port_chg: "預估組合變動",
-            est_pnl: "預估損益",
-            est_nav: "預估淨值",
-            ticker: "代號"
+            est_pnl: "預估損益 (USD)",
+            est_pnl_ntd: "預估損益 (NTD)",
+            ticker: "代號",
+            // Tooltip Explanations
+            tt_ann_return: "根據歷史資料所計算的平均年化報酬率。",
+            tt_ann_volatility: "根據每日報酬率計算的整體年化波動度（風險測度）。",
+            tt_sharpe: "衡量每承擔一單位風險所獲得的超額報酬。數值越高代表績效越好。",
+            tt_sortino: "類似於夏普比率，但只考量下檔風險（下跌波動），不處罰上漲的波動。",
+            tt_calmar: "年化報酬率與最大回撤幅度之比值，用以評估面對最大虧損能力的回本效率。",
+            tt_max_dd: "過去觀察期間內，資產淨值從最高點跌至最低點的最大百分比跌幅。",
+            tt_var_95: "在 95% 信心水準下，投資組合單日最大的潛在損失百分比。",
+            tt_var_99: "在 99% 信心水準下，投資組合單日最大的潛在損失百分比（極端狀況）。",
+            tt_cvar_95: "條件風險價值。當損失超過 VaR 95% 時的平均可能損失水準。",
+            tt_beta_port: "相對於標普 500 基準的波動彈性。大於 1 代表比大盤波動劇烈，小於 1 代表抗跌。",
+            tt_skewness: "衡量報酬分佈的不對稱性。正值代表大賺較大賠常見，負值代表大賠較大賺常見。",
+            tt_kurtosis: "衡量極端行情的峰度（厚尾）。數值越高，代表發生極端大漲或大跌的機率高於常態分配。"
         }
     };
 
@@ -115,6 +268,8 @@
     Object.assign(translations.zh, riskTranslations.zh);
 
     // Re-run update to apply new keys if page loaded
-    updateLanguage();
+    if (typeof updateLanguage === 'function') {
+        updateLanguage();
+    }
 </script>
 {% endblock %}

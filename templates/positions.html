@@ -1,13 +1,50 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row">
+<div class="row fade-in">
     <div class="col-12">
-        <h2 class="mb-4" data-i18n="positions_title">Portfolio Positions</h2>
+        <h2 class="hero-title mb-4" data-i18n="positions_title" style="font-size: 2.2rem; text-align: left;">Portfolio
+            Positions</h2>
 
-        <div class="card p-3">
+        <!-- Summary Cards Row -->
+        <div class="row mb-4 row-cols-2 row-cols-md-5 g-3">
+            <div class="col">
+                <div class="card p-3 text-center h-100" style="border-top: 3px solid var(--primary-color);">
+                    <div class="text-muted small mb-1" data-i18n="summary_nav_twd">Portfolio Value (TWD)</div>
+                    <div class="fs-5 fw-bold privacy-sensitive text-primary">NT$ {{ data.dashboard.nav_twd | commas }}
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card p-3 text-center h-100" style="border-top: 3px solid var(--success-color);">
+                    <div class="text-muted small mb-1" data-i18n="summary_nav_usd">Portfolio Value (USD)</div>
+                    <div class="fs-5 fw-bold privacy-sensitive text-success">{{ data.dashboard.nav | currency }}</div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card p-3 text-center h-100" style="border-top: 3px solid var(--secondary-color);">
+                    <div class="text-muted small mb-1" data-i18n="summary_stocks">Stocks Count</div>
+                    <div class="fs-5 fw-bold text-light">{{ data.dashboard.stock_count }}</div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card p-3 text-center h-100" style="border-top: 3px solid var(--secondary-color);">
+                    <div class="text-muted small mb-1" data-i18n="summary_etfs">ETFs Count</div>
+                    <div class="fs-5 fw-bold text-light">{{ data.dashboard.etf_count }}</div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card p-3 text-center h-100" style="border-top: 3px solid #f59e0b;">
+                    <div class="text-muted small mb-1" data-i18n="summary_cash">Cash Balance</div>
+                    <div class="fs-5 fw-bold privacy-sensitive" style="color: #fbbf24;">{{ data.dashboard.cash |
+                        currency }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-4">
             <div class="table-responsive">
-                <table class="table table-hover table-striped" id="positionsTable">
+                <table class="table table-hover table-borderless align-middle" id="positionsTable">
                     <thead>
                         <tr class="cursor-pointer">
                             <th onclick="sortTable(0)" data-i18n="ticker">Ticker <i class="fas fa-sort small"></i></th>
@@ -23,11 +60,15 @@
                                     class="fas fa-sort small"></i></th>
                             <th onclick="sortTable(7, true)" class="text-end" data-i18n="mkt_val">Market Value <i
                                     class="fas fa-sort small"></i></th>
-                            <th onclick="sortTable(8, true)" class="text-end" data-i18n="pnl">Unrealized P&L <i
+                            <th onclick="sortTable(8, true)" class="text-end" data-i18n="mkt_val_twd">Market Value (TWD)
+                                <i class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(9, true)" class="text-end" data-i18n="pnl">Unrealized P&L <i
                                     class="fas fa-sort small"></i></th>
-                            <th onclick="sortTable(9, true)" class="text-end" data-i18n="pnl_pct">P&L % <i
+                            <th onclick="sortTable(10, true)" class="text-end" data-i18n="pnl_pct">P&L % <i
                                     class="fas fa-sort small"></i></th>
-                            <th onclick="sortTable(10, true)" class="text-end" data-i18n="weight">Weight <i
+                            <th onclick="sortTable(11, true)" class="text-end" data-i18n="weight">Weight <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(12, true)" class="text-end" data-i18n="beta">Beta <i
                                     class="fas fa-sort small"></i></th>
                         </tr>
                     </thead>
@@ -42,6 +83,7 @@
                             <td class="text-end privacy-sensitive">{{ pos.avg_cost | currency }}</td>
                             <td class="text-end privacy-sensitive">{{ pos.price | currency }}</td>
                             <td class="text-end privacy-sensitive">{{ pos.market_value | currency }}</td>
+                            <td class="text-end privacy-sensitive">NT$ {{ pos.market_value_twd | commas }}</td>
                             <td
                                 class="text-end privacy-sensitive {{ 'text-green' if pos.unrealized_pnl >= 0 else 'text-red' }}">
                                 {{ pos.unrealized_pnl | currency }}
@@ -50,6 +92,7 @@
                                 {{ pos.pnl_pct | pct }}
                             </td>
                             <td class="text-end">{{ pos.weight | pct }}</td>
+                            <td class="text-end">{{ "%.2f"|format(pos.beta) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -113,5 +156,29 @@
             }
         }
     }
+
+    const posTranslations = {
+        en: {
+            summary_nav_twd: "Portfolio Value (TWD)",
+            summary_nav_usd: "Portfolio Value (USD)",
+            summary_stocks: "Stocks Count",
+            summary_etfs: "ETFs Count",
+            summary_cash: "Cash Balance",
+            mkt_val_twd: "Market Value (TWD)",
+            beta: "Beta"
+        },
+        zh: {
+            summary_nav_twd: "投資組合總值 (台幣)",
+            summary_nav_usd: "投資組合總值 (美元)",
+            summary_stocks: "股票數量",
+            summary_etfs: "ETF 數量",
+            summary_cash: "現金餘額",
+            mkt_val_twd: "市值 (台幣)",
+            beta: "Beta 值"
+        }
+    };
+    Object.assign(translations.en, posTranslations.en);
+    Object.assign(translations.zh, posTranslations.zh);
+    updateLanguage();
 </script>
 {% endblock %}

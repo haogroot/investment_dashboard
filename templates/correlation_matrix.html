@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 20px;
+        align-items: center;
+        background: var(--card-bg);
+        padding: 10px 15px;
+        border-radius: 8px;
+        border: 1px solid var(--card-border);
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9em;
+        color: var(--text-color);
+    }
+
+    .legend-box {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+    }
+
+    .corr-table td {
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: default;
+    }
+
+    .corr-table td:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        z-index: 10;
+        position: relative;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-5 fade-in">
+    <div class="col-12">
+        <h2 class="hero-title mb-4" data-i18n="correlation_title" style="font-size: 2.2rem; text-align: left;">
+            Correlation Matrix</h2>
+
+        <div class="card p-4">
+            <h5 data-i18n="correlation_matrix" class="mb-3">Asset Return Correlations (1 Year)</h5>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-box" style="background:rgb(30,200,200);"></div> <span
+                        data-i18n="legend_strong_neg">&le; -0.4 (Strong neg.)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background:rgb(50,150,100);"></div> <span data-i18n="legend_low">~0
+                        (Low)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background:rgb(200,180,50);"></div> <span
+                        data-i18n="legend_moderate">~0.4-0.7 (Moderate)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background:rgb(200,50,50);"></div> <span
+                        data-i18n="legend_strong_pos">&ge; 0.7 (Strong pos.)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box" style="background:rgb(120,120,120);"></div> <span data-i18n="legend_self">=
+                        1.0
+                        (Self)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-borderless text-center table-sm corr-table" style="font-size: 0.9em;">
+                <thead>
+                    <tr>
+                        <th></th>
+                        {% for row in data.correlation %}
+                        <th>{{ row.ticker }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data.correlation %}
+                    <tr>
+                        <th class="text-start align-middle">{{ row.ticker }}</th>
+                        {% for cell in row.corr_cells %}
+                        {% set val = cell.val %}
+
+                        {# New Color logic based on user request #}
+                        {% if val >= 0.999 %}
+                        {% set bg_color='rgb(120,120,120)' %}
+                        {% set txt_color='#fff' %}
+                        {% elif val <= -0.4 %} {% set bg_color='rgb(30,200,200)' %} {% set txt_color='#000' %} {% elif
+                            val < 0.3 %} {% set bg_color='rgb(50,150,100)' %} {% set txt_color='#fff' %} {% elif val <
+                            0.7 %} {% set bg_color='rgb(200,180,50)' %} {% set txt_color='#000' %} {% else %} {% set
+                            bg_color='rgb(200,50,50)' %} {% set txt_color='#fff' %} {% endif %} <td
+                            style="background-color: {{ bg_color }}; color: {{ txt_color }}; font-weight: 500; padding: 10px;"
+                            title="{{ row.ticker }} vs {{ cell.target }}: {{ '%.2f'|format(val) }}">
+                            {{ "%.2f"|format(val) }}
+                            </td>
+                            {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-3">
+            <small class="text-muted" data-i18n="correlation_desc">
+                * Based on daily returns over the last 252 trading days.
+            </small>
+        </div>
+    </div>
+</div>
+</div>
+
+<script>
+    const corrTranslations = {
+        en: {
+            correlation_title: "Correlation Matrix",
+            correlation_matrix: "Asset Return Correlations (1 Year)",
+            correlation_desc: "* Based on daily returns over the last 252 trading days.",
+            legend_strong_neg: "≤ -0.4 (Strong neg.)",
+            legend_low: "~0 (Low)",
+            legend_moderate: "~0.4-0.7 (Moderate)",
+            legend_strong_pos: "≥ 0.7 (Strong pos.)",
+            legend_self: "= 1.0 (Self)"
+        },
+        zh: {
+            correlation_title: "相關性矩陣",
+            correlation_matrix: "資產報酬率相關性 (近一年)",
+            correlation_desc: "* 基於最近 252 個交易日的日報酬率計算。",
+            legend_strong_neg: "≤ -0.4 (高度負相關)",
+            legend_low: "~0 (低度相關)",
+            legend_moderate: "~0.4-0.7 (中度相關)",
+            legend_strong_pos: "≥ 0.7 (高度正相關)",
+            legend_self: "= 1.0 (自身資產)"
+        }
+    };
+
+    Object.assign(translations.en, corrTranslations.en);
+    Object.assign(translations.zh, corrTranslations.zh);
+    updateLanguage();
+</script>
+{% endblock %}
