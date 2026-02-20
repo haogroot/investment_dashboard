@@ -12,6 +12,13 @@
         <div class="card h-100 p-3">
             <h6 class="text-muted" data-i18n="nav">Net Asset Value</h6>
             <h3 class="privacy-sensitive">{{ data.dashboard.nav | currency }}</h3>
+            {% if data.dashboard.nav_twd %}
+            <div class="text-muted small mt-2">
+                <span class="privacy-sensitive">NT$ {{ '%.0f'|format(data.dashboard.nav_twd)|commas }}</span>
+                <br>
+                <span style="font-size: 0.8em;">(USD/TWD: {{ '%.2f'|format(data.dashboard.fx_rate) }})</span>
+            </div>
+            {% endif %}
             <small class="text-muted">
                 <span data-i18n="cash">Cash</span>: <span class="privacy-sensitive">{{ data.dashboard.cash | currency
                     }}</span>

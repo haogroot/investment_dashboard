@@ -239,7 +239,9 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
             'total_return_pct': total_return,
             'max_drawdown': max_dd,
             'sharpe': sharpe,
-            'history': [{'date': d.strftime('%Y-%m-%d'), 'nav': v} for d, v in nav_series.items()]
+            'history': [{'date': d.strftime('%Y-%m-%d'), 'nav': v} for d, v in nav_series.items()],
+            'nav_twd': current_nav * market_data['TWD=X'].ffill().iloc[-1] if 'TWD=X' in market_data.columns else 0,
+            'fx_rate': market_data['TWD=X'].ffill().iloc[-1] if 'TWD=X' in market_data.columns else 0
         },
         'positions': positions,
         'options': options,

@@ -82,7 +82,7 @@ def load_process_data(input_file=None):
 
     # Fetch OHLCV + Benchmark
     # Using threads=True for faster download
-    tickers_to_fetch = tickers + ['^GSPC']
+    tickers_to_fetch = tickers + ['^GSPC', 'TWD=X']
     print(f"Fetching market data for: {tickers_to_fetch}...")
     
     market_data = yf.download(tickers_to_fetch, start=START_DATE, progress=False, threads=True)['Close']
@@ -148,7 +148,6 @@ def calculate_portfolio_state(df_trades, all_dates, tickers):
         # Note: If multiple trades on same day, process all.
         # But 'date' in all_dates might match trade 'Date'.
         
-
 
         while trade_idx < n_trades and df_trades.iloc[trade_idx]['Date'] <= date:
             trade = df_trades.iloc[trade_idx]

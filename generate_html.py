@@ -65,9 +65,16 @@ def generate_html_report(input_file=None):
     
     def format_pct(value):
         return "{:.2%}".format(value)
+
+    def format_commas(value):
+        try:
+            return "{:,.0f}".format(value)
+        except:
+            return value
     
     env.filters['currency'] = format_currency
     env.filters['pct'] = format_pct
+    env.filters['commas'] = format_commas
     
     # Export JSON
     import json
