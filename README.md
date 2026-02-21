@@ -41,7 +41,7 @@ This Python project generates a comprehensive investment portfolio dashboard in 
     python build_portfolio.py
     ```
 
-    **Specify a custom file (e.g., inside `trade_source/`):**
+    **指定自定義檔案 (自動於 `trade_source/` 目錄下尋找，無需輸入目錄名):**
     ```bash
     python build_portfolio.py fubon-trade_20260219.csv
     ```
@@ -78,7 +78,10 @@ Generate a set of interactive HTML reports (Positions, Risk, Options, etc.) view
     ```bash
     python generate_html.py
     ```
-    *Optional: Specify custom input file: `python generate_html.py my_trades.csv`*
+    *可選：指定特定交易檔案 (同樣無需輸入 `trade_source/`):*
+    ```bash
+    python generate_html.py fubon-trade_20260219.csv
+    ```
 
 3.  **View**:
     Open `trade_output/html/index.html` in your browser.

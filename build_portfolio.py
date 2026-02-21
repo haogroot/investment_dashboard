@@ -97,6 +97,11 @@ def load_process_data(input_file=None):
     if '^GSPC' in market_data.columns:
         market_data = market_data.rename(columns={'^GSPC': 'SP500'})
     
+    # Force market_data columns to match the exact order of 'tickers' list
+    # Because yfinance returns columns alphabetically, which breaks Excel 1:1 SUMPRODUCT indexing
+    extra_cols = [c for c in market_data.columns if c not in tickers]
+    market_data = market_data[tickers + extra_cols]
+    
     # Fill missing days (weekends/holidays) to ensure alignment with Daily_Units
     end_date_dt = datetime.today()
     all_dates = pd.date_range(start=START_DATE, end=end_date_dt, freq='B')

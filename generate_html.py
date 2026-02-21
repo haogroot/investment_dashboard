@@ -117,6 +117,19 @@ def generate_html_report(input_file=None):
             print(f"Error rendering {template_name}: {e}")
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description='Build HTML Dashboard')
+    parser.add_argument('input_file', nargs='?', default=None, help='Input trade CSV filename (default: configured INPUT_FILE)')
+    args = parser.parse_args()
+
+    # Resolve Input File Path if provided
+    input_path = None
+    if args.input_file:
+        arg_path = Path(args.input_file)
+        if arg_path.is_absolute():
+            input_path = arg_path
+        else:
+            input_path = BASE_DIR / "trade_source" / args.input_file
+
     setup_directories()
-    input_file = sys.argv[1] if len(sys.argv) > 1 else None
-    generate_html_report(input_file)
+    generate_html_report(input_path)
