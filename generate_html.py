@@ -143,11 +143,7 @@ if __name__ == "__main__":
     # Resolve Input File Path if provided
     input_path = None
     if args.input_file:
-        arg_path = Path(args.input_file)
-        if arg_path.is_absolute():
-            input_path = arg_path
-        else:
-            input_path = BASE_DIR / "trade_source" / args.input_file
+        input_path = Path(args.input_file)
 
     setup_directories()
     generate_html_report(input_path)

@@ -11,7 +11,7 @@ import argparse
 
 # --- Configuration ---
 BASE_DIR = Path(__file__).parent
-INPUT_FILE = BASE_DIR / "trade_source" / "fubon-trade_202602.csv"
+INPUT_FILE = BASE_DIR / "trade_source" / "fubon-trade-record_20260224.csv"
 OUTPUT_DIR = BASE_DIR / "trade_output"
 # Find the latest output file (assuming pattern portfolio_dashboard_YYYYMMDD.xlsx)
 # We will search for the latest file to update.

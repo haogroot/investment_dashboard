@@ -32,18 +32,18 @@ This Python project generates a comprehensive investment portfolio dashboard in 
 1.  **Prepare Trade Log**:
     - Export your trade history from your broker as a CSV file.
     - Place the CSV file in the `trade_source` directory.
-    - Ensure the file is named `fubon-trade_202602.csv` (or update `INPUT_FILE` in `build_portfolio.py`).
+    - Ensure the file is named `fubon-trade-record_20260224.csv` (or update `INPUT_FILE` in `build_portfolio.py`).
 
 2.  **Run the Script**:
 
-    **Default (uses `fubon-trade_202602.csv`):**
+    **Default (uses `trade_source/fubon-trade-record_20260224.csv`):**
     ```bash
     python build_portfolio.py
     ```
 
-    **指定自定義檔案 (自動於 `trade_source/` 目錄下尋找，無需輸入目錄名):**
+    **指定自定義檔案 (需輸入相對或絕對路徑):**
     ```bash
-    python build_portfolio.py fubon-trade_20260219.csv
+    python build_portfolio.py trade_source/fubon-trade_20260219.csv
     ```
 
 3.  **View Results**:
@@ -78,9 +78,9 @@ Generate a set of interactive HTML reports (Positions, Risk, Options, etc.) view
     ```bash
     python generate_html.py
     ```
-    *可選：指定特定交易檔案 (同樣無需輸入 `trade_source/`):*
+    *可選：指定特定交易檔案 (需輸入相對或絕對路徑):*
     ```bash
-    python generate_html.py fubon-trade_20260219.csv
+    python generate_html.py trade_source/fubon-trade_20260219.csv
     ```
 
 3.  **View**:

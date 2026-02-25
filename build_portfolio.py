@@ -10,7 +10,7 @@ from pathlib import Path
 # --- Configuration ---
 # Use relative paths based on the script directory to handle Windows/WSL mapping automatically
 BASE_DIR = Path(__file__).parent
-INPUT_FILE = BASE_DIR / "trade_source" / "fubon-trade_202602.csv"
+INPUT_FILE = BASE_DIR / "trade_source" / "fubon-trade-record_20260224.csv"
 OUTPUT_DIR = BASE_DIR / "trade_output"
 OUTPUT_FILE = OUTPUT_DIR / f"portfolio_dashboard_{datetime.today().strftime('%Y%m%d')}.xlsx"
 STARTING_CAPITAL = 84240.32  # USD
@@ -701,15 +701,7 @@ if __name__ == "__main__":
     # Resolve Input File Path if provided
     input_path = None
     if args.input_file:
-        arg_path = Path(args.input_file)
-        if arg_path.is_absolute():
-            input_path = arg_path
-        else:
-            # Assume relative to trade_source if just filename, or relative to cwd?
-            # User said "python3 build_portfolio.py fubin-trade_20260219.csv"
-            # It's safer to check current dir first, then trade_source?
-            # Or assume trade_source as default location for data.
-            input_path = BASE_DIR / "trade_source" / args.input_file
+        input_path = Path(args.input_file)
 
     df_trades, market_data, df_ref, all_dates = load_process_data(input_file=input_path) 
     
