@@ -9,6 +9,7 @@ import jinja2
 # Import project modules
 import build_portfolio
 import portfolio_analytics
+import tw_stock_loader
 
 # Configuration
 BASE_DIR = Path(__file__).parent
@@ -28,7 +29,7 @@ def setup_directories():
     
     # Create dummy static CSS/JS if not exist (will handle later)
 
-def generate_html_report(input_file=None):
+def generate_html_report(input_file=None, tw_inventory_file=None):
     print("Loading data...")
     # 1. Load Data
     df_trades, market_data, df_ref, all_dates = build_portfolio.load_process_data(input_file)
@@ -102,7 +103,16 @@ def generate_html_report(input_file=None):
         json.dump(clean_analytics, f, indent=4)
     print(f"Generated {json_path.name}")
 
-    # 5. Render Templates
+    # 5. Load Taiwan Stock Data (if provided)
+    tw_data = None
+    if tw_inventory_file:
+        tw_data = tw_stock_loader.load_tw_inventory(tw_inventory_file)
+        if tw_data:
+            clean_analytics['tw_positions'] = tw_data['tw_positions']
+            clean_analytics['tw_summary'] = tw_data['tw_summary']
+            print(f"Loaded {len(tw_data['tw_positions'])} Taiwan stock positions")
+
+    # 6. Render Templates
     pages = [
         ('index.html', 'dashboard.html'),
         ('positions.html', 'positions.html'),
@@ -113,6 +123,10 @@ def generate_html_report(input_file=None):
         ('sector_exposure.html', 'sector_exposure.html'),
         ('history.html', 'history.html')
     ]
+    
+    # Conditionally add TW positions page
+    if tw_data:
+        pages.append(('tw_positions.html', 'tw_positions.html'))
     
     print("Rendering templates...")
     # Pass all analytics data to template
@@ -138,6 +152,8 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Build HTML Dashboard')
     parser.add_argument('input_file', nargs='?', default=None, help='Input trade CSV filename (default: configured INPUT_FILE)')
+    parser.add_argument('--tw-inventory', dest='tw_inventory', default=None,
+                        help='Taiwan stock inventory CSV file path (e.g. trade_source/ctbc-trade-record_20260225.csv)')
     args = parser.parse_args()
 
     # Resolve Input File Path if provided
@@ -145,5 +161,9 @@ if __name__ == "__main__":
     if args.input_file:
         input_path = Path(args.input_file)
 
+    tw_inventory_path = None
+    if args.tw_inventory:
+        tw_inventory_path = Path(args.tw_inventory)
+
     setup_directories()
-    generate_html_report(input_path)
+    generate_html_report(input_path, tw_inventory_file=tw_inventory_path)
