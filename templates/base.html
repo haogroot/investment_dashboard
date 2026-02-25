@@ -150,6 +150,9 @@
                     <li class="nav-item">
                         <a class="nav-link" href="sector_exposure.html" data-i18n="nav_sector_nav">Sector Exposure</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="history.html" data-i18n="nav_history">History</a>
+                    </li>
                 </ul>
                 <div class="d-flex align-items-center">
                     <!-- Privacy Toggle -->
@@ -227,7 +230,16 @@
                 desc_correlation: "Pairwise return correlations with heatmap. Click tickers to sort. Hover cells for ticker pair details.",
                 desc_risk: "VaR, Sharpe, Sortino, Calmar, Maximum Drawdown, Beta, option hedging impact. Hover cards for term explanations.",
                 desc_stress: "Scenario analysis from -50% crash to +50% rally, showing both unhedged and option-hedged impacts with 1Y return context.",
-                desc_sector: "Portfolio breakdown by sector allocation (incl. option notional), currency denomination, and brokerage account."
+                desc_sector: "Portfolio breakdown by sector allocation (incl. option notional), currency denomination, and brokerage account.",
+                chart_asset_trend: "Asset Trend",
+                nav_history: "Historical Transactions",
+                history_tab_history: "History",
+                history_tab_upcoming: "Upcoming",
+                chart_asset_allocation: "Asset Allocation",
+                text_stocks: "Stocks",
+                text_bonds: "Bonds",
+                text_cash: "Cash",
+                text_other: "Other"
             },
             zh: {
                 nav_title: "投資組合儀表板",
@@ -272,7 +284,16 @@
                 desc_correlation: "顯示兩兩資產的收益相關性熱力圖。點擊代號可進行排序，懸浮儲存格顯示詳細資訊。",
                 desc_risk: "VaR、夏普、索提諾、卡瑪比率、最大回撤、Beta 及選擇權避險影響。懸浮游標可查看名詞解釋。",
                 desc_stress: "情境分析：從 -50% 崩盤到 +50% 大漲，對比未避險與避險後的影響，並提供近一年損益背景參考。",
-                desc_sector: "投資組合分類圓餅圖：涵蓋板塊配置（含選擇權名目價值）、幣別組成及券商帳戶分佈。"
+                desc_sector: "投資組合分類圓餅圖：涵蓋板塊配置（含選擇權名目價值）、幣別組成及券商帳戶分佈。",
+                chart_asset_trend: "資產變化趨勢",
+                nav_history: "歷史交易",
+                history_tab_history: "歷史",
+                history_tab_upcoming: "即將到來",
+                chart_asset_allocation: "資產配置",
+                text_stocks: "股票",
+                text_bonds: "債券",
+                text_cash: "現金",
+                text_other: "其他"
             }
         };
 
@@ -285,11 +306,42 @@
             const t = translations[currentLang];
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
-                if (t[key]) el.textContent = t[key];
+                if (t[key]) {
+                    // Replace first visible text node to preserve child elements like <i>
+                    let updated = false;
+                    for (let node of el.childNodes) {
+                        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
+                            let hasSpace = node.textContent.endsWith(' ');
+                            node.textContent = t[key] + (hasSpace ? ' ' : '');
+                            updated = true;
+                            break;
+                        }
+                    }
+                    if (!updated) {
+                        el.textContent = t[key];
+                    }
+                }
             });
+
+            // Dispose existing tooltips before updating to prevent artifacts
+            if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                    const tooltip = bootstrap.Tooltip.getInstance(el);
+                    if (tooltip) tooltip.dispose();
+                });
+            }
+
             document.querySelectorAll('[data-i18n-title]').forEach(el => {
                 const key = el.getAttribute('data-i18n-title');
-                if (t[key]) el.title = t[key];
+                if (t[key]) {
+                    el.setAttribute('title', t[key]);
+                    el.setAttribute('data-bs-title', t[key]);
+                    el.setAttribute('data-bs-toggle', 'tooltip');
+                    el.setAttribute('data-bs-placement', 'top'); // nice default
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                        new bootstrap.Tooltip(el);
+                    }
+                }
             });
             document.getElementById('lang-label').textContent = currentLang === 'en' ? '中' : 'En';
         }

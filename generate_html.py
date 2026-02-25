@@ -50,7 +50,8 @@ def generate_html_report(input_file=None):
         market_data, 
         df_ref, 
         cost_basis,
-        starting_capital=build_portfolio.STARTING_CAPITAL
+        starting_capital=build_portfolio.STARTING_CAPITAL,
+        df_trades=df_trades
     )
     
     # 4. Setup Jinja2 Environment
@@ -78,11 +79,27 @@ def generate_html_report(input_file=None):
     
     # Export JSON
     import json
+    
+    # Custom encoder for numpy types
+    class NpEncoder(json.JSONEncoder):
+        def default(self, obj):
+            import numpy as np
+            if isinstance(obj, np.integer):
+                return int(obj)
+            if isinstance(obj, np.floating):
+                return float(obj)
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            return super(NpEncoder, self).default(obj)
+
+    # First serialize to json string to handle numpy types
+    analytics_json_str = json.dumps(analytics, cls=NpEncoder)
+    # Then parse back to native python types
+    clean_analytics = json.loads(analytics_json_str)
+
     json_path = OUTPUT_DIR / "risk_metrics.json"
     with open(json_path, 'w', encoding='utf-8') as f:
-        # Convert non-serializable objects if any (e.g. numpy types)
-        # Using default=str for safety
-        json.dump(analytics, f, indent=4, default=str)
+        json.dump(clean_analytics, f, indent=4)
     print(f"Generated {json_path.name}")
 
     # 5. Render Templates
@@ -93,14 +110,15 @@ def generate_html_report(input_file=None):
         ('risk.html', 'risk.html'),
         ('stress_testing.html', 'stress_testing.html'),
         ('options.html', 'options.html'),
-        ('sector_exposure.html', 'sector_exposure.html')
+        ('sector_exposure.html', 'sector_exposure.html'),
+        ('history.html', 'history.html')
     ]
     
     print("Rendering templates...")
     # Pass all analytics data to template
     # Also pass 'now' for timestamp
     context = {
-        'data': analytics,
+        'data': clean_analytics,
         'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
     

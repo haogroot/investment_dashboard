@@ -1,5 +1,5 @@
 
-def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, starting_capital):
+def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, starting_capital, df_trades=None):
     """
     Computes all portfolio analytics required for the HTML dashboard.
     Returns a dictionary structured for Jinja2 templates.
@@ -63,6 +63,10 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
     stock_count = 0
     etf_count = 0
     
+    stock_value = 0
+    bond_value = 0
+    other_value = 0
+    
     for ticker in df_units.columns:
         units = last_units.get(ticker, 0)
         if abs(units) < 0.001: continue # Skip closed positions
@@ -89,6 +93,22 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
         # Assume US Options have multiplier 100.
         multiplier = 100 if asset_type == 'OPTION' else 1
         market_val = units * price * multiplier
+        
+        is_bond = False
+        t_upper = ticker.upper()
+        if t_upper in ['BND', 'TLT', 'AGG', 'IEF', 'SHY', 'IEI', 'TLH', 'GOVT', 'VGIT', 'VCIT', 'VCSH', 'BNDX']:
+            is_bond = True
+        elif isinstance(name, str) and 'bond' in name.lower():
+            is_bond = True
+        elif isinstance(sector, str) and 'bond' in sector.lower():
+            is_bond = True
+            
+        if is_bond:
+            bond_value += market_val
+        elif asset_type in ['EQUITY', 'ETF']:
+            stock_value += market_val
+        else:
+            other_value += market_val
         
         # Cost Basis
         cb = cost_basis.get(ticker, {})
@@ -380,12 +400,80 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
             pos['var_95'] = 0
             pos['beta'] = 1.0
 
+    # 7. Historical Transactions Processing
+    trade_history_grouped = []
+    if df_trades is not None and not df_trades.empty:
+        # Sort descending by date
+        df_trades_sorted = df_trades.copy().sort_values('Date', ascending=False)
+        
+        # We need to map standard sides to the ones expected by the UI
+        # Ensure we have date properties
+        history_list = []
+        for _, row in df_trades_sorted.iterrows():
+            date_obj = row['Date']
+            
+            raw_side = str(row['Side']).lower().strip()
+            # Fubon Chinese Headers handling already done in load_process_data, but let's be safe
+            if '買' in raw_side or 'buy' in raw_side:
+                side = 'Buy'
+                side_zh = '買入'
+            elif '賣' in raw_side or 'sell' in raw_side:
+                side = 'Sell'
+                side_zh = '賣出'
+            else:
+                side = 'Other'
+                side_zh = '其他'
+                
+            qty = float(row.get('Qty', 0))
+            price = float(row.get('Price', 0))
+            fee = float(row.get('Fee', 0)) if pd.notnull(row.get('Fee')) else 0.0
+            tax = float(row.get('Tax', 0)) if pd.notnull(row.get('Tax')) else 0.0
+            
+            total_val = (price * qty) + (fee if side == 'Buy' else -(fee + tax))
+            
+            ticker = row.get('Ticker', '')
+            
+            # Lookup name
+            ref_row = df_ref[df_ref['Ticker'] == ticker]
+            name = ref_row['Name'].values[0] if not ref_row.empty else ticker
+            asset_type = ref_row['Type'].values[0] if not ref_row.empty else 'EQUITY'
+            
+            # Month grouping key like "2026-01"
+            month_key = date_obj.strftime('%Y-%m')
+            
+            history_list.append({
+                'date_str': date_obj.strftime('%Y-%m-%d'),
+                'month_str': date_obj.strftime('%b'), # 'Jan', 'Feb'
+                'day_str': date_obj.strftime('%d'), # '15', '30'
+                'month_key': month_key,
+                'ticker': ticker,
+                'name': name,
+                'side': side,
+                'side_zh': side_zh,
+                'qty': qty,
+                'price': price,
+                'total_val': total_val,
+                'type': asset_type
+            })
+            
+        # Group by month
+        from itertools import groupby
+        
+        for k, g in groupby(history_list, key=lambda x: x['month_key']):
+            trade_history_grouped.append({
+                'month': k,
+                'trades': list(g)
+            })
+
     return {
         'dashboard': {
             'date': last_date.strftime('%Y-%m-%d'),
             'nav': current_nav,
             'cash': cash_aligned.iloc[-1],
             'invested': invested_value.iloc[-1],
+            'stock_value': stock_value,
+            'bond_value': bond_value,
+            'other_value': other_value,
             'day_change_pct': day_change_pct,
             'total_return_pct': total_return,
             'max_drawdown': max_dd,
@@ -411,5 +499,6 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
         'options': options,
         'sectors': sectors_list,
         'correlation': correlation_data,
-        'stress_test': stress_results
+        'stress_test': stress_results,
+        'history_grouped': trade_history_grouped
     }

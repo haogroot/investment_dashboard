@@ -108,6 +108,108 @@
 </div>
 
 <div class="row g-4 mb-5 fade-in" style="animation-delay: 0.1s;">
+    <!-- Asset Trend Chart -->
+    <div class="col-12 mb-2">
+        <div class="card p-4">
+            <h4 class="mb-3" data-i18n="chart_asset_trend">Asset Trend</h4>
+            <div style="height: 400px; position: relative; width: 100%;">
+                <canvas id="assetTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asset Allocation -->
+    <div class="col-12 mb-4 fade-in" style="animation-delay: 0.15s;">
+        <div class="card p-4">
+            <h4 class="mb-3" data-i18n="chart_asset_allocation">Asset Allocation</h4>
+
+            {% set total = data.dashboard.nav %}
+            {% set stock_pct = (data.dashboard.stock_value / total * 100) if total > 0 else 0 %}
+            {% set bond_pct = (data.dashboard.bond_value / total * 100) if total > 0 else 0 %}
+            {% set cash_pct = (data.dashboard.cash / total * 100) if total > 0 else 0 %}
+            {% set other_pct = (data.dashboard.other_value / total * 100) if total > 0 else 0 %}
+
+            <div class="progress mt-2 mb-3"
+                style="height: 24px; border-radius: 12px; background-color: rgba(255,255,255,0.05); overflow: hidden;">
+                {% if stock_pct > 0.1 %}
+                <div class="progress-bar" role="progressbar" style="width: {{ stock_pct }}%; background-color: #3b82f6;"
+                    aria-valuenow="{{ stock_pct|round(1) }}" aria-valuemin="0" aria-valuemax="100">
+                    <span class="px-2 fw-medium text-white" style="font-size: 0.85rem;">{{ stock_pct|round(1) }}%</span>
+                </div>
+                {% endif %}
+                {% if bond_pct > 0.1 %}
+                <div class="progress-bar" role="progressbar" style="width: {{ bond_pct }}%; background-color: #10b981;"
+                    aria-valuenow="{{ bond_pct|round(1) }}" aria-valuemin="0" aria-valuemax="100">
+                    <span class="px-2 fw-medium text-white" style="font-size: 0.85rem;">{{ bond_pct|round(1) }}%</span>
+                </div>
+                {% endif %}
+                {% if cash_pct > 0.1 %}
+                <div class="progress-bar" role="progressbar" style="width: {{ cash_pct }}%; background-color: #64748b;"
+                    aria-valuenow="{{ cash_pct|round(1) }}" aria-valuemin="0" aria-valuemax="100">
+                    <span class="px-2 fw-medium text-white" style="font-size: 0.85rem;">{{ cash_pct|round(1) }}%</span>
+                </div>
+                {% endif %}
+                {% if other_pct > 0.1 %}
+                <div class="progress-bar" role="progressbar" style="width: {{ other_pct }}%; background-color: #f59e0b;"
+                    aria-valuenow="{{ other_pct|round(1) }}" aria-valuemin="0" aria-valuemax="100">
+                    <span class="px-2 fw-medium text-dark" style="font-size: 0.85rem;">{{ other_pct|round(1) }}%</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="d-flex justify-content-between flex-wrap gap-3 mt-3">
+                <div class="d-flex align-items-center">
+                    <div
+                        style="width: 12px; height: 12px; border-radius: 50%; background-color: #3b82f6; margin-right: 8px;">
+                    </div>
+                    <div>
+                        <div class="text-muted small" data-i18n="text_stocks">Stocks</div>
+                        <div class="fw-bold privacy-sensitive">
+                            {{ data.dashboard.stock_value | currency }}
+                            <span class="text-muted ms-1" style="font-size: 0.85em;">({{ stock_pct|round(1) }}%)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div
+                        style="width: 12px; height: 12px; border-radius: 50%; background-color: #10b981; margin-right: 8px;">
+                    </div>
+                    <div>
+                        <div class="text-muted small" data-i18n="text_bonds">Bonds</div>
+                        <div class="fw-bold privacy-sensitive">
+                            {{ data.dashboard.bond_value | currency }}
+                            <span class="text-muted ms-1" style="font-size: 0.85em;">({{ bond_pct|round(1) }}%)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div
+                        style="width: 12px; height: 12px; border-radius: 50%; background-color: #64748b; margin-right: 8px;">
+                    </div>
+                    <div>
+                        <div class="text-muted small" data-i18n="text_cash">Cash</div>
+                        <div class="fw-bold privacy-sensitive">
+                            {{ data.dashboard.cash | currency }}
+                            <span class="text-muted ms-1" style="font-size: 0.85em;">({{ cash_pct|round(1) }}%)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div
+                        style="width: 12px; height: 12px; border-radius: 50%; background-color: #f59e0b; margin-right: 8px;">
+                    </div>
+                    <div>
+                        <div class="text-muted small" data-i18n="text_other">Other</div>
+                        <div class="fw-bold privacy-sensitive">
+                            {{ data.dashboard.other_value | currency }}
+                            <span class="text-muted ms-1" style="font-size: 0.85em;">({{ other_pct|round(1) }}%)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Positions -->
     <div class="col-md-6 col-lg-4">
         <a href="positions.html" class="nav-card">
@@ -172,4 +274,112 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Render chart using the historical NAV data
+        const historyData = {{ data.dashboard.history | tojson
+    }};
+
+    if (!historyData || historyData.length === 0) return;
+
+    const dates = historyData.map(item => item.date);
+    const navs = historyData.map(item => item.nav);
+
+    const ctx = document.getElementById('assetTrendChart').getContext('2d');
+
+    // Setup modern gradient background for the line chart
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
+    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.01)');
+
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [{
+                label: 'Net Asset Value',
+                data: navs,
+                borderColor: '#3b82f6',
+                backgroundColor: gradient,
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            // Respect privacy state
+                            if (document.body.classList.contains('privacy-enabled')) {
+                                return '****';
+                            }
+                            let value = context.parsed.y;
+                            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+                        }
+                    },
+                    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#f8fafc',
+                    borderColor: '#334155',
+                    borderWidth: 1,
+                    padding: 10
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#94a3b8',
+                        maxTicksLimit: 8,
+                        maxRotation: 0
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.05)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        color: '#94a3b8',
+                        callback: function (value) {
+                            // Respect privacy state
+                            if (document.body.classList.contains('privacy-enabled')) {
+                                return '****';
+                            }
+                            return '$' + (value / 1000).toLocaleString() + 'k';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Re-render chart texts when privacy mode class changes on the body
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.attributeName === 'class') {
+                chart.update();
+            }
+        });
+    });
+    observer.observe(document.body, { attributes: true });
+    });
+</script>
 {% endblock %}
