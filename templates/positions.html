@@ -42,14 +42,61 @@
             </div>
         </div>
 
+        <!-- Portfolio Composition Chart Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card p-4">
+                    <h4 class="mb-4" data-i18n="composition_title">Portfolio Composition</h4>
+                    <div class="row align-items-center">
+                        <!-- Chart Container -->
+                        <div class="col-md-6 mb-4 mb-md-0 position-relative d-flex justify-content-center">
+                            <div style="position: relative; width: 300px; height: 300px;">
+                                <canvas id="compositionChart"></canvas>
+                                <!-- Center Text Overlay -->
+                                <div class="position-absolute top-50 start-50 translate-middle text-center w-100"
+                                    style="pointer-events: none;">
+                                    <div class="text-muted fw-semibold" style="letter-spacing: 1px; font-size: 1.1rem;">
+                                        TWD</div>
+                                    <div class="fw-bold privacy-sensitive"
+                                        style="font-size: 1.8rem; color: var(--text-color);" id="chartCenterValue">
+                                        {{ data.dashboard.nav_twd | commas }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Custom Legend / Asset List Container -->
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between mb-2 pb-2 border-bottom border-secondary text-muted small px-2"
+                                style="padding-left: 16px !important;">
+                                <span data-i18n="legend_name">Name</span>
+                                <div class="text-end">
+                                    <span class="d-inline-block me-3 text-center" style="width: 50px;"
+                                        data-i18n="legend_weight">%</span>
+                                    <span class="d-inline-block text-end" style="width: 110px;"
+                                        data-i18n="legend_market_value">Market Value</span>
+                                </div>
+                            </div>
+                            <div id="customLegendContainer"
+                                style="max-height: 320px; overflow-y: auto; padding-right: 5px;">
+                                <!-- Legend items will be injected here by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="card p-4">
             <div class="table-responsive">
                 <table class="table table-hover table-borderless align-middle" id="positionsTable">
                     <thead>
                         <tr class="cursor-pointer">
-                            <th onclick="sortTable(0)" data-i18n="ticker">Ticker <i class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(0)" data-i18n="ticker">Ticker <i class="fas fa-sort small"></i>
+                            </th>
                             <th onclick="sortTable(1)" data-i18n="name">Name <i class="fas fa-sort small"></i></th>
-                            <th onclick="sortTable(2)" data-i18n="sector">Sector <i class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(2)" data-i18n="sector">Sector <i class="fas fa-sort small"></i>
+                            </th>
                             <th onclick="sortTable(3)" data-i18n="country">Country <i class="fas fa-sort small"></i>
                             </th>
                             <th onclick="sortTable(4, true)" class="text-end" data-i18n="shares">Shares <i
@@ -60,8 +107,10 @@
                                     class="fas fa-sort small"></i></th>
                             <th onclick="sortTable(7, true)" class="text-end" data-i18n="mkt_val">Market Value <i
                                     class="fas fa-sort small"></i></th>
-                            <th onclick="sortTable(8, true)" class="text-end" data-i18n="mkt_val_twd">Market Value (TWD)
-                                <i class="fas fa-sort small"></i></th>
+                            <th onclick="sortTable(8, true)" class="text-end" data-i18n="mkt_val_twd">Market Value
+                                (TWD)
+                                <i class="fas fa-sort small"></i>
+                            </th>
                             <th onclick="sortTable(9, true)" class="text-end" data-i18n="pnl">Unrealized P&L <i
                                     class="fas fa-sort small"></i></th>
                             <th onclick="sortTable(10, true)" class="text-end" data-i18n="pnl_pct">P&L % <i
@@ -102,6 +151,10 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     function sortTable(n, isNumber = false) {
         var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
@@ -165,7 +218,13 @@
             summary_etfs: "ETFs Count",
             summary_cash: "Cash Balance",
             mkt_val_twd: "Market Value (TWD)",
-            beta: "Beta"
+            beta: "Beta",
+            composition_title: "Portfolio Composition",
+            legend_name: "Name",
+            legend_weight: "%",
+            legend_market_value: "Market Value",
+            positions_title: "Portfolio Positions",
+            country: "Country"
         },
         zh: {
             summary_nav_twd: "投資組合總值 (台幣)",
@@ -174,11 +233,148 @@
             summary_etfs: "ETF 數量",
             summary_cash: "現金餘額",
             mkt_val_twd: "市值 (台幣)",
-            beta: "Beta 值"
+            beta: "Beta 值",
+            composition_title: "投資組合",
+            legend_name: "名稱",
+            legend_weight: "%",
+            legend_market_value: "市值",
+            positions_title: "投資組合持倉",
+            country: "國家"
         }
     };
     Object.assign(translations.en, posTranslations.en);
     Object.assign(translations.zh, posTranslations.zh);
     updateLanguage();
+
+    // =============== Chart and Legend Logic =============== //
+    document.addEventListener('DOMContentLoaded', function () {
+        const rawPositions = {{ data.positions | tojson
+    }};
+
+    // Filter out tiny positions or grouping logic if desired,
+    // for now we show all but sort by weight descending
+    let chartData = rawPositions.slice().sort((a, b) => b.weight - a.weight);
+
+    // Pre-defined sleek colors for dark theme
+    const colors = [
+        '#ef4444', // Red-500
+        '#d946ef', // Fuchsia-500
+        '#8b5cf6', // Violet-500
+        '#f43f5e', // Rose-500
+        '#06b6d4', // Cyan-500
+        '#22c55e', // Green-500
+        '#eab308', // Yellow-500
+        '#a8a29e', // Stone-400
+        '#f97316', // Orange-500
+        '#3b82f6', // Blue-500
+        '#14b8a6', // Teal-500
+        '#ec4899', // Pink-500
+    ];
+
+    // Ensure we have enough colors by repeating if necessary
+    const getColors = (count) => {
+        let res = [];
+        for (let i = 0; i < count; i++) {
+            res.push(colors[i % colors.length]);
+        }
+        return res;
+    };
+
+    const bgColors = getColors(chartData.length);
+    const labels = chartData.map(p => p.ticker);
+    const weights = chartData.map(p => p.weight * 100); // Chart.js likes percentages like 42.6, not 0.426
+
+    // Initialize Donut Chart
+    const ctx = document.getElementById('compositionChart').getContext('2d');
+    const donutChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: weights,
+                backgroundColor: bgColors,
+                borderWidth: 2,
+                borderColor: 'var(--card-bg)', // match chart background to card background
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '80%', // Thinner donut
+            plugins: {
+                legend: {
+                    display: false // We use our custom HTML legend
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#f8fafc',
+                    borderColor: '#334155',
+                    borderWidth: 1,
+                    padding: 10,
+                    callbacks: {
+                        label: function (context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed !== null) {
+                                label += context.parsed.toFixed(1) + '%';
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Initialize Custom Legend
+    const legendContainer = document.getElementById('customLegendContainer');
+
+    let legendHTML = '';
+    chartData.forEach((pos, index) => {
+        const color = bgColors[index];
+        const weightPct = (pos.weight * 100).toFixed(1) + '%';
+        // Format market value to match localized strings like NT$ 3,298,260
+        const mktValStr = 'NT$ ' + Math.round(pos.market_value_twd).toLocaleString('en-US');
+
+        legendHTML += `
+                <div class="d-flex justify-content-between align-items-center py-2 mb-2 custom-legend-item" 
+                     style="border-left: 4px solid ${color}; padding-left: 12px; background: rgba(255,255,255,0.02); border-radius: 0 8px 8px 0; transition: background 0.2s;">
+                    <div class="d-flex flex-column">
+                        <span class="fw-bold" style="font-size: 1rem;">${pos.ticker}</span>
+                        <span class="text-muted small text-truncate" style="max-width: 150px;" title="${pos.name}">${pos.name}</span>
+                    </div>
+                    <div class="text-end d-flex align-items-center">
+                        <span class="fw-semibold text-muted me-3 d-inline-block text-center" style="width: 50px;">${weightPct}</span>
+                        <span class="fw-bold privacy-sensitive d-inline-block text-end" style="width: 110px;">${mktValStr}</span>
+                    </div>
+                </div>
+            `;
+    });
+
+    legendContainer.innerHTML = legendHTML;
+
+    // Optional: Add hover effect to link Legend with Chart
+    const legendItems = legendContainer.querySelectorAll('.custom-legend-item');
+    legendItems.forEach((item, index) => {
+        item.addEventListener('mouseenter', () => {
+            item.style.background = 'rgba(255,255,255,0.08)';
+            if (donutChart.setActiveElements) {
+                donutChart.setActiveElements([{ datasetIndex: 0, index: index }]);
+                donutChart.update();
+            }
+        });
+        item.addEventListener('mouseleave', () => {
+            item.style.background = 'rgba(255,255,255,0.02)';
+            if (donutChart.setActiveElements) {
+                donutChart.setActiveElements([]);
+                donutChart.update();
+            }
+        });
+    });
+    });
 </script>
 {% endblock %}

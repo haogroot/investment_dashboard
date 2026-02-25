@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    /* Styling to match the dark theme and specific UI design of the screenshot */
+    .history-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    /* Segmented Control */
+    .segmented-control {
+        display: flex;
+        background-color: var(--card-bg);
+        /* Use base card bg */
+        border-radius: 20px;
+        padding: 4px;
+        margin-bottom: 24px;
+        border: 1px solid var(--card-border);
+    }
+
+    .segmented-control .btn-segment {
+        flex: 1;
+        text-align: center;
+        padding: 8px 16px;
+        border-radius: 16px;
+        color: var(--text-muted);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: none;
+        background: transparent;
+    }
+
+    .segmented-control .btn-segment.active {
+        background-color: rgba(255, 255, 255, 0.1);
+        /* Subtle highlight */
+        color: var(--text-color);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Month Divider */
+    .month-divider {
+        display: flex;
+        align-items: center;
+        margin: 24px 0 16px 0;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .month-divider::before,
+    .month-divider::after {
+        content: "";
+        flex: 1;
+        border-bottom: 1px solid var(--card-border);
+    }
+
+    .month-divider::before {
+        margin-right: 16px;
+    }
+
+    .month-divider::after {
+        margin-left: 16px;
+    }
+
+    /* Transaction Row */
+    .tx-row {
+        display: flex;
+        align-items: center;
+        padding: 16px 0;
+        position: relative;
+    }
+
+    /* Color Bar */
+    .tx-color-bar {
+        width: 4px;
+        height: 40px;
+        border-radius: 2px;
+        margin-right: 16px;
+    }
+
+    /* Set up colors based on screenshot indicators */
+    .color-cyan {
+        background-color: #00bcd4;
+    }
+
+    .color-yellow {
+        background-color: #ffc107;
+    }
+
+    .color-orange {
+        background-color: #ff9800;
+    }
+
+    /* Date Block */
+    .tx-date-block {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin-right: 16px;
+        min-width: 35px;
+    }
+
+    .tx-month {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        line-height: 1;
+    }
+
+    .tx-day {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-color);
+        line-height: 1.2;
+    }
+
+    /* Content Area */
+    .tx-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .tx-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 2px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .tx-subtitle {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    /* Amount */
+    .tx-amount {
+        font-size: 1rem;
+        font-weight: 600;
+        text-align: right;
+    }
+
+    .amount-positive {
+        color: var(--success-color);
+    }
+
+    .amount-negative {
+        color: var(--danger-color);
+    }
+
+    .amount-neutral {
+        color: var(--text-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="history-container fade-in">
+
+    <!-- Segmented Control -->
+    <div class="segmented-control">
+        <button class="btn-segment active" data-i18n="history_tab_history">History</button>
+        <button class="btn-segment" data-i18n="history_tab_upcoming">Upcoming</button>
+    </div>
+
+    <!-- History List -->
+    <div class="history-list">
+        {% if data.history_grouped %}
+        {% for month_group in data.history_grouped %}
+        <!-- Month Divider -->
+        <div class="month-divider">
+            {{ month_group.month }}
+        </div>
+
+        <!-- Transactions -->
+        {% for tx in month_group.trades %}
+        <div class="tx-row">
+            <!-- Left Color Bar (Heuristics based on screenshot) -->
+            {% if tx.side == 'Buy' %}
+            <div class="tx-color-bar color-yellow"></div>
+            {% elif tx.side == 'Sell' %}
+            <div class="tx-color-bar color-orange"></div>
+            {% else %}
+            <div class="tx-color-bar color-cyan"></div>
+            {% endif %}
+
+            <!-- Date Block -->
+            <div class="tx-date-block">
+                <span class="tx-month">{{ tx.month_str }}</span>
+                <span class="tx-day">{{ tx.day_str }}</span>
+            </div>
+
+            <!-- Content -->
+            <div class="tx-content">
+                <div class="tx-title">
+                    {% if tx.side == 'Buy' or tx.side == 'Sell' %}
+                    <span class="lang-zh-target">{{ tx.side_zh }}</span>
+                    <span class="lang-en-target" style="display:none;">{{ tx.side }}</span>
+                    <span>{{ tx.ticker }}</span> @ <span>{{ tx.price|commas }}</span>
+                    {% else %}
+                    <span>{{ tx.name }}</span>
+                    {% endif %}
+                </div>
+                <div class="tx-subtitle">
+                    {% if tx.side == 'Buy' or tx.side == 'Sell' %}
+                    US Bank &rarr; {{ tx.ticker }}
+                    {% else %}
+                    {{ tx.ticker }}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Amount -->
+            {% if tx.side == 'Buy' %}
+            <div class="tx-amount amount-neutral privacy-sensitive">
+                {{ tx.total_val|currency }}
+            </div>
+            {% elif tx.side == 'Sell' %}
+            <div class="tx-amount amount-positive privacy-sensitive">
+                + {{ tx.total_val|currency }}
+            </div>
+            {% else %}
+            <!-- Fallback format -->
+            <div class="tx-amount amount-negative privacy-sensitive">
+                - {{ (tx.total_val|abs)|currency }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endfor %}
+        {% else %}
+        <div class="text-center text-muted mt-5">
+            <p>No historical transactions available.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Custom logic to handle the internal side labels translation alongside base.html
+    function updateHistoryItemsLang() {
+        const currentLang = localStorage.getItem('lang') || 'en';
+        document.querySelectorAll('.tx-row').forEach(row => {
+            const zhEl = row.querySelector('.lang-zh-target');
+            const enEl = row.querySelector('.lang-en-target');
+            if (zhEl && enEl) {
+                if (currentLang === 'en') {
+                    zhEl.style.display = 'none';
+                    enEl.style.display = 'inline';
+                } else {
+                    zhEl.style.display = 'inline';
+                    enEl.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // Hook into the central language button click mapped in base.html
+    const langBtn = document.getElementById('btn-lang');
+    if (langBtn) {
+        langBtn.addEventListener('click', () => {
+            // Delay slightly to let base update localstorage first
+            setTimeout(updateHistoryItemsLang, 50);
+        });
+    }
+
+    // Initial run
+    updateHistoryItemsLang();
+
+</script>
+{% endblock %}
