@@ -502,3 +502,118 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
         'stress_test': stress_results,
         'history_grouped': trade_history_grouped
     }
+
+
+def calculate_goal_tracking(total_asset_twd, goal_config):
+    """
+    Calculates goal tracking metrics for the Goal Tracking page.
+    
+    Args:
+        total_asset_twd: Current total portfolio value in TWD
+        goal_config: Dict loaded from goal_config.json
+    
+    Returns:
+        Dict with goal progress, financial freedom metrics, and projections
+    """
+    import math
+    from datetime import datetime
+
+    goals_result = []
+    for goal in goal_config.get('goals', []):
+        target = goal.get('target_value', 0)
+        current = total_asset_twd
+        progress = (current / target) if target > 0 else 0
+        gap = max(0, target - current)
+
+        goal_data = {
+            'id': goal.get('id', ''),
+            'name_en': goal.get('name_en', ''),
+            'name_zh': goal.get('name_zh', ''),
+            'target_value': target,
+            'current_value': current,
+            'progress': min(progress, 1.0),  # Cap at 100%
+            'progress_pct': min(progress * 100, 100),
+            'gap': gap,
+            'currency': goal.get('currency', 'TWD'),
+            'type': goal.get('type', 'short_term'),
+            'deadline': goal.get('deadline'),
+            'days_remaining': None,
+            'on_track': None,
+        }
+
+        # Calculate days remaining if deadline exists
+        if goal.get('deadline'):
+            try:
+                deadline_dt = datetime.strptime(goal['deadline'], '%Y-%m-%d')
+                now = datetime.now()
+                days_remaining = (deadline_dt - now).days
+                goal_data['days_remaining'] = max(0, days_remaining)
+                goal_data['deadline_str'] = deadline_dt.strftime('%Y-%m-%d')
+            except (ValueError, TypeError):
+                pass
+
+        # Estimate years to reach target using compound interest
+        expected_return = goal_config.get('projection', {}).get('expected_annual_return', 0.10)
+        if current > 0 and target > current and expected_return > 0:
+            years_to_goal = math.log(target / current) / math.log(1 + expected_return)
+            goal_data['est_years'] = round(years_to_goal, 1)
+            est_date = datetime.now().year + years_to_goal
+            est_year = int(est_date)
+            est_month = int((est_date - est_year) * 12) + 1
+            goal_data['est_date'] = f"{est_year}-{est_month:02d}"
+            
+            # Check if on track (estimated date before deadline)
+            if goal.get('deadline'):
+                try:
+                    deadline_dt = datetime.strptime(goal['deadline'], '%Y-%m-%d')
+                    est_dt = datetime(est_year, min(est_month, 12), 1)
+                    goal_data['on_track'] = est_dt <= deadline_dt
+                except (ValueError, TypeError):
+                    pass
+        elif current >= target:
+            goal_data['est_years'] = 0
+            goal_data['est_date'] = 'Achieved'
+            goal_data['on_track'] = True
+        else:
+            goal_data['est_years'] = None
+            goal_data['est_date'] = None
+
+        goals_result.append(goal_data)
+
+    # Financial Freedom Metrics (4% Rule)
+    ff_config = goal_config.get('financial_freedom', {})
+    monthly_expense = ff_config.get('monthly_expense', 50000)
+    swr = ff_config.get('safe_withdrawal_rate', 0.04)
+    annual_expense = monthly_expense * 12
+
+    # Passive income = total assets * SWR
+    passive_income = total_asset_twd * swr
+    # Coverage ratio = passive income / annual expense
+    coverage_ratio = passive_income / annual_expense if annual_expense > 0 else 0
+    # Required capital for full financial freedom
+    required_capital = annual_expense / swr if swr > 0 else 0
+
+    financial_freedom = {
+        'monthly_expense': monthly_expense,
+        'annual_expense': annual_expense,
+        'safe_withdrawal_rate': swr,
+        'passive_income': passive_income,
+        'passive_income_monthly': passive_income / 12,
+        'coverage_ratio': min(coverage_ratio, 1.0),
+        'coverage_pct': min(coverage_ratio * 100, 100),
+        'coverage_ratio_raw': coverage_ratio,  # Can exceed 100%
+        'required_capital': required_capital,
+        'current_asset': total_asset_twd,
+        'capital_gap': max(0, required_capital - total_asset_twd),
+    }
+
+    # Projection config
+    projection = {
+        'expected_annual_return': goal_config.get('projection', {}).get('expected_annual_return', 0.10),
+    }
+
+    return {
+        'goals': goals_result,
+        'financial_freedom': financial_freedom,
+        'projection': projection,
+    }

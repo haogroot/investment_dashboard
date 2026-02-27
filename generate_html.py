@@ -1,5 +1,6 @@
 import os
 import shutil
+import json
 from pathlib import Path
 from datetime import datetime
 import pandas as pd
@@ -177,6 +178,20 @@ def generate_html_report(input_file=None, tw_inventory_file=None):
         'position_count': len(all_positions)
     }
 
+    # 7. Goal Tracking
+    goal_config_path = BASE_DIR / 'goal_config.json'
+    if goal_config_path.exists():
+        with open(goal_config_path, 'r', encoding='utf-8') as f:
+            goal_config = json.load(f)
+        goal_tracking = portfolio_analytics.calculate_goal_tracking(
+            total_asset_twd=total_market_value_twd,
+            goal_config=goal_config
+        )
+        clean_analytics['goal_tracking'] = goal_tracking
+        print(f"Calculated goal tracking for {len(goal_tracking['goals'])} goals")
+    else:
+        print("goal_config.json not found, skipping goal tracking")
+
     # 6. Render Templates
     pages = [
         ('index.html', 'dashboard.html'),
@@ -186,7 +201,8 @@ def generate_html_report(input_file=None, tw_inventory_file=None):
         ('stress_testing.html', 'stress_testing.html'),
         ('options.html', 'options.html'),
         ('sector_exposure.html', 'sector_exposure.html'),
-        ('history.html', 'history.html')
+        ('history.html', 'history.html'),
+        ('goals.html', 'goals.html')
     ]
     
     # Conditionally add TW positions page

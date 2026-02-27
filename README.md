@@ -12,6 +12,7 @@ This Python project generates a comprehensive investment portfolio dashboard fro
     - **Unified Holdings**: Consolidated view of all global positions.
     - **Positions**: Detailed breakdowns of US and Taiwan holdings.
     - **Historical Transactions**: Track your trade history over time.
+    - **Goal Tracking**: Set SMART goals, track financial freedom progress via the 4% rule, and perform gap analysis with projected timelines.
     - **Risk & Stress Testing**: Beta analysis, correlation matrices, and customizable stress-testing.
     - **Sector & Geographic Exposure**: Analyzes portfolio diversification.
 - **Excel Dashboard**: Provides a supplementary Excel output with equity curves and position breakdowns.
@@ -99,6 +100,7 @@ python update_portfolio.py trade 2026-02-18 NVDA BUY 10 125.50
 
 ## Project Structure
 
+- `goal_config.json`: Configuration file for user-defined SMART goals and financial freedom parameters.
 - `generate_html.py`: Generates interactive HTML reports.
 - `build_portfolio.py`: Main logic for building Excel dashboards.
 - `update_portfolio.py`: Script for daily incremental updates.

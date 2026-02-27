@@ -1,0 +1,29 @@
+{
+  "goals": [
+    {
+      "id": "stock_10m",
+      "name_en": "Stock Assets 10M TWD",
+      "name_zh": "股票資產達 1000 萬",
+      "target_value": 10000000,
+      "currency": "TWD",
+      "deadline": "2030-12-31",
+      "type": "short_term"
+    },
+    {
+      "id": "financial_freedom",
+      "name_en": "Financial Freedom",
+      "name_zh": "財務自由",
+      "target_value": 25000000,
+      "currency": "TWD",
+      "deadline": null,
+      "type": "long_term"
+    }
+  ],
+  "financial_freedom": {
+    "monthly_expense": 50000,
+    "safe_withdrawal_rate": 0.04
+  },
+  "projection": {
+    "expected_annual_return": 0.20
+  }
+}
