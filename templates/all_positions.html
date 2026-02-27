@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row fade-in">
+    <div class="col-12">
+        <h2 class="hero-title mb-4" data-i18n="all_positions_title" style="font-size: 2.2rem; text-align: left;">All
+            Holdings
+        </h2>
+
+        <!-- Summary Cards Row -->
+        <div class="row mb-4 row-cols-2 row-cols-md-4 g-3">
+            <div class="col">
+                <div class="card p-3 text-center h-100" style="border-top: 3px solid var(--primary-color);">
+                    <div class="text-muted small mb-1" data-i18n="all_summary_total_value">Total Value (TWD)</div>
+                    <div class="fs-5 fw-bold privacy-sensitive text-primary">NT$ {{
+                        "{:,.0f}".format(data.all_summary.total_value_twd) }}</div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card p-3 text-center h-100" style="border-top: 3px solid var(--success-color);">
+                    <div class="text-muted small mb-1" data-i18n="all_summary_total_pnl">Total P&L (TWD)</div>
+                    <div
+                        class="fs-5 fw-bold privacy-sensitive {{ 'text-green' if data.all_summary.total_pnl_twd >= 0 else 'text-red' }}">
+                        NT$ {{ "{:,.0f}".format(data.all_summary.total_pnl_twd) }}
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card p-3 text-center h-100" style="border-top: 3px solid var(--secondary-color);">
+                    <div class="text-muted small mb-1" data-i18n="all_summary_return_pct">Total Return</div>
+                    <div
+                        class="fs-5 fw-bold {{ 'text-green' if data.all_summary.total_return_pct >= 0 else 'text-red' }}">
+                        {{ "{:.2%}".format(data.all_summary.total_return_pct) }}
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card p-3 text-center h-100" style="border-top: 3px solid #f59e0b;">
+                    <div class="text-muted small mb-1" data-i18n="all_summary_positions">Total Positions</div>
+                    <div class="fs-5 fw-bold" style="color: #fbbf24;">
+                        {{ data.all_summary.position_count }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Portfolio Composition Chart Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card p-4">
+                    <h4 class="mb-4" data-i18n="all_composition_title">Overall Portfolio Composition</h4>
+                    <div class="row align-items-center">
+                        <!-- Chart Container -->
+                        <div class="col-md-6 mb-4 mb-md-0 position-relative d-flex justify-content-center">
+                            <div style="position: relative; width: 300px; height: 300px;">
+                                <canvas id="allCompositionChart"></canvas>
+                                <!-- Center Text Overlay -->
+                                <div class="position-absolute top-50 start-50 translate-middle text-center w-100"
+                                    style="pointer-events: none;">
+                                    <div class="text-muted fw-semibold" style="letter-spacing: 1px; font-size: 1.1rem;">
+                                        TWD</div>
+                                    <div class="fw-bold privacy-sensitive"
+                                        style="font-size: 1.8rem; color: var(--text-color);" id="allChartCenterValue">
+                                        {{ "{:,.0f}".format(data.all_summary.total_value_twd) }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Custom Legend / Asset List Container -->
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between mb-2 pb-2 border-bottom border-secondary text-muted small px-2"
+                                style="padding-left: 16px !important;">
+                                <span data-i18n="legend_name">Name</span>
+                                <div class="text-end">
+                                    <span class="d-inline-block me-3 text-center" style="width: 50px;"
+                                        data-i18n="legend_weight">%</span>
+                                    <span class="d-inline-block text-end" style="width: 110px;"
+                                        data-i18n="legend_market_value">Value (TWD)</span>
+                                </div>
+                            </div>
+                            <div id="allCustomLegendContainer"
+                                style="max-height: 320px; overflow-y: auto; padding-right: 5px;">
+                                <!-- Legend items will be injected here by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-4">
+            <div class="table-responsive">
+                <table class="table table-hover table-borderless align-middle" id="allPositionsTable">
+                    <thead>
+                        <tr class="cursor-pointer">
+                            <th onclick="sortAllTable(0)" data-i18n="currency">Currency <i
+                                    class="fas fa-sort small"></i>
+                            </th>
+                            <th onclick="sortAllTable(1)" data-i18n="ticker">Ticker <i class="fas fa-sort small"></i>
+                            </th>
+                            <th onclick="sortAllTable(2)" data-i18n="name">Name <i class="fas fa-sort small"></i></th>
+                            <th onclick="sortAllTable(3)" data-i18n="sector">Sector <i class="fas fa-sort small"></i>
+                            </th>
+                            <th onclick="sortAllTable(4, true)" class="text-end" data-i18n="shares">Shares <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortAllTable(5, true)" class="text-end" data-i18n="price">Price <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortAllTable(6, true)" class="text-end" data-i18n="all_mkt_val">Value (TWD)
+                                <i class="fas fa-sort small"></i>
+                            </th>
+                            <th onclick="sortAllTable(7, true)" class="text-end" data-i18n="all_pnl">P&L (TWD) <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortAllTable(8, true)" class="text-end" data-i18n="pnl_pct">Return % <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortAllTable(9, true)" class="text-end" data-i18n="all_weight">Weight % <i
+                                    class="fas fa-sort small"></i></th>
+                            <th onclick="sortAllTable(10, true)" class="text-end" data-i18n="beta">Beta <i
+                                    class="fas fa-sort small"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pos in data.all_positions %}
+                        <tr>
+                            <td>
+                                {% if pos.currency == 'USD' %}
+                                <span class="badge bg-primary text-light">USD</span>
+                                {% else %}
+                                <span class="badge bg-success text-light">TWD</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold">{{ pos.ticker }}</td>
+                            <td>{{ pos.name }}</td>
+                            <td>{{ pos.sector }}</td>
+                            <td class="text-end privacy-sensitive">{{ "{:,.2f}".format(pos.shares) if pos.currency ==
+                                'USD' else "{:,.0f}".format(pos.shares) }}</td>
+                            <td class="text-end privacy-sensitive">{{ "{:,.2f}".format(pos.price) }}</td>
+                            <td class="text-end privacy-sensitive">NT$ {{ "{:,.0f}".format(pos.market_value_unified) }}
+                            </td>
+                            <td
+                                class="text-end privacy-sensitive {{ 'text-green' if pos.unrealized_pnl_unified >= 0 else 'text-red' }}">
+                                NT$ {{ "{:,.0f}".format(pos.unrealized_pnl_unified) }}
+                            </td>
+                            <td class="text-end {{ 'text-green' if pos.pnl_pct >= 0 else 'text-red' }}">
+                                {{ "{:.2%}".format(pos.pnl_pct) }}
+                            </td>
+                            <td class="text-end">{{ "{:.2%}".format(pos.weight_unified) }}</td>
+                            <td class="text-end {% if pos.beta is none %}text-muted{% endif %}">
+                                {% if pos.beta is none %}—{% else %}{{ "%.2f"|format(pos.beta) }}{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    function sortAllTable(n, isNumber = false) {
+        var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+        table = document.getElementById("allPositionsTable");
+        switching = true;
+        dir = "asc";
+
+        while (switching) {
+            switching = false;
+            rows = table.rows;
+            for (i = 1; i < (rows.length - 1); i++) {
+                shouldSwitch = false;
+
+                x = rows[i].getElementsByTagName("TD")[n];
+                y = rows[i + 1].getElementsByTagName("TD")[n];
+
+                let xVal = x.textContent.trim();
+                let yVal = y.textContent.trim();
+
+                if (isNumber) {
+                    xVal = parseFloat(xVal.replace(/[^0-9.-]+/g, "")) || 0;
+                    yVal = parseFloat(yVal.replace(/[^0-9.-]+/g, "")) || 0;
+                } else {
+                    xVal = xVal.toLowerCase();
+                    yVal = yVal.toLowerCase();
+                }
+
+                if (dir == "asc") {
+                    if (xVal > yVal) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                } else if (dir == "desc") {
+                    if (xVal < yVal) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                }
+            }
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+                switchcount++;
+            } else {
+                if (switchcount == 0 && dir == "asc") {
+                    dir = "desc";
+                    switching = true;
+                }
+            }
+        }
+    }
+
+    const allPosTranslations = {
+        en: {
+            all_positions_title: "All Holdings",
+            all_summary_total_value: "Total Value (TWD)",
+            all_summary_total_pnl: "Total P&L (TWD)",
+            all_summary_return_pct: "Total Return",
+            all_summary_positions: "Total Positions",
+            all_composition_title: "Overall Portfolio Composition",
+            all_mkt_val: "Value (TWD)",
+            all_pnl: "P&L (TWD)",
+            all_weight: "Weight %",
+            currency: "Currency",
+        },
+        zh: {
+            all_positions_title: "全部持倉",
+            all_summary_total_value: "總市值 (台幣)",
+            all_summary_total_pnl: "總損益 (台幣)",
+            all_summary_return_pct: "總報酬率",
+            all_summary_positions: "總持倉數量",
+            all_composition_title: "整體投資組合",
+            all_mkt_val: "市值 (台幣)",
+            all_pnl: "損益 (台幣)",
+            all_weight: "權重 %",
+            currency: "幣別",
+        }
+    };
+    Object.assign(translations.en, allPosTranslations.en);
+    Object.assign(translations.zh, allPosTranslations.zh);
+    updateLanguage();
+
+    // =============== Chart and Legend Logic =============== //
+    document.addEventListener('DOMContentLoaded', function () {
+        const rawPositions = {{ data.all_positions | tojson
+    }};
+
+    let chartData = rawPositions.slice().sort((a, b) => b.weight_unified - a.weight_unified);
+
+    const colors = [
+        '#ef4444', '#d946ef', '#8b5cf6', '#f43f5e',
+        '#06b6d4', '#22c55e', '#eab308', '#a8a29e',
+        '#f97316', '#3b82f6', '#14b8a6', '#ec4899',
+        '#1d4ed8', '#047857', '#b91c1c', '#c2410c'
+    ];
+
+    const getColors = (count) => {
+        let res = [];
+        for (let i = 0; i < count; i++) {
+            res.push(colors[i % colors.length]);
+        }
+        return res;
+    };
+
+    const bgColors = getColors(chartData.length);
+    const labels = chartData.map(p => p.ticker + ' ' + p.name);
+    const weights = chartData.map(p => p.weight_unified * 100);
+
+    const ctx = document.getElementById('allCompositionChart').getContext('2d');
+    const donutChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: weights,
+                backgroundColor: bgColors,
+                borderWidth: 2,
+                borderColor: 'var(--card-bg)',
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '80%',
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#f8fafc',
+                    borderColor: '#334155',
+                    borderWidth: 1,
+                    padding: 10,
+                    callbacks: {
+                        label: function (context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed !== null) {
+                                label += context.parsed.toFixed(1) + '%';
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Custom Legend
+    const legendContainer = document.getElementById('allCustomLegendContainer');
+
+    let legendHTML = '';
+    chartData.forEach((pos, index) => {
+        const color = bgColors[index];
+        const weightPct = (pos.weight_unified * 100).toFixed(1) + '%';
+        const mktValStr = 'NT$ ' + Math.round(pos.market_value_unified).toLocaleString('en-US');
+        const currencyBadge = pos.currency === 'USD' ? '<span class="badge bg-primary ms-1" style="font-size:0.6rem;">USD</span>' : '<span class="badge bg-success ms-1" style="font-size:0.6rem;">TWD</span>';
+
+        legendHTML += `
+                <div class="d-flex justify-content-between align-items-center py-2 mb-2 all-custom-legend-item" 
+                     style="border-left: 4px solid ${color}; padding-left: 12px; background: rgba(255,255,255,0.02); border-radius: 0 8px 8px 0; transition: background 0.2s;">
+                    <div class="d-flex flex-column">
+                        <span class="fw-bold d-flex align-items-center" style="font-size: 1rem;">${pos.ticker} ${currencyBadge}</span>
+                        <span class="text-muted small text-truncate" style="max-width: 150px;" title="${pos.name}">${pos.name}</span>
+                    </div>
+                    <div class="text-end d-flex align-items-center">
+                        <span class="fw-semibold text-muted me-3 d-inline-block text-center" style="width: 50px;">${weightPct}</span>
+                        <span class="fw-bold privacy-sensitive d-inline-block text-end" style="width: 110px;">${mktValStr}</span>
+                    </div>
+                </div>
+            `;
+    });
+
+    legendContainer.innerHTML = legendHTML;
+
+    // Hover interaction
+    const legendItems = legendContainer.querySelectorAll('.all-custom-legend-item');
+    legendItems.forEach((item, index) => {
+        item.addEventListener('mouseenter', () => {
+            item.style.background = 'rgba(255,255,255,0.08)';
+            if (donutChart.setActiveElements) {
+                donutChart.setActiveElements([{ datasetIndex: 0, index: index }]);
+                donutChart.update();
+            }
+        });
+        item.addEventListener('mouseleave', () => {
+            item.style.background = 'rgba(255,255,255,0.02)';
+            if (donutChart.setActiveElements) {
+                donutChart.setActiveElements([]);
+                donutChart.update();
+            }
+        });
+    });
+    });
+</script>
+{% endblock %}

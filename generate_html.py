@@ -112,6 +112,71 @@ def generate_html_report(input_file=None, tw_inventory_file=None):
             clean_analytics['tw_summary'] = tw_data['tw_summary']
             print(f"Loaded {len(tw_data['tw_positions'])} Taiwan stock positions")
 
+    # Combine US and TW Data
+    all_positions = []
+    total_market_value_twd = 0
+    total_pnl_twd = 0
+    total_cost_twd = 0
+
+    # Add US positions to all_positions
+    us_fx_rate = clean_analytics['dashboard'].get('fx_rate', 1.0)
+    for pos in clean_analytics['positions']:
+        pos_twd = pos.copy()
+        pos_twd['currency'] = 'USD'
+        market_value_twd = pos.get('market_value_twd', pos.get('market_value', 0) * us_fx_rate)
+        pos_twd['market_value_unified'] = market_value_twd
+        
+        # Approximate US Cost in TWD (if cost_basis available, use it or estimate)
+        us_cost_twd = (pos.get('market_value', 0) - pos.get('unrealized_pnl', 0)) * us_fx_rate
+        pos_twd['total_cost_unified'] = us_cost_twd
+        
+        unrealized_pnl_twd = pos.get('unrealized_pnl', 0) * us_fx_rate
+        pos_twd['unrealized_pnl_unified'] = unrealized_pnl_twd
+
+        total_market_value_twd += market_value_twd
+        total_pnl_twd += unrealized_pnl_twd
+        total_cost_twd += us_cost_twd
+        all_positions.append(pos_twd)
+
+    # Add TW positions to all_positions
+    if tw_data:
+        for pos in tw_data['tw_positions']:
+            pos_twd = pos.copy()
+            pos_twd['currency'] = 'TWD'
+            pos_twd['ticker'] = pos.get('ticker_local', pos.get('ticker', ''))
+            pos_twd['name'] = pos.get('name_local', pos.get('name', ''))
+            
+            market_value_twd = pos.get('market_value', 0)
+            pos_twd['market_value_unified'] = market_value_twd
+            
+            tw_cost_twd = pos.get('market_value', 0) - pos.get('unrealized_pnl', 0)
+            pos_twd['total_cost_unified'] = tw_cost_twd
+            
+            unrealized_pnl_twd = pos.get('unrealized_pnl', 0)
+            pos_twd['unrealized_pnl_unified'] = unrealized_pnl_twd
+
+            total_market_value_twd += market_value_twd
+            total_pnl_twd += unrealized_pnl_twd
+            total_cost_twd += tw_cost_twd
+            all_positions.append(pos_twd)
+
+    # Recalculate weights for combined portfolio
+    for pos in all_positions:
+        pos['weight_unified'] = pos['market_value_unified'] / total_market_value_twd if total_market_value_twd > 0 else 0
+
+    all_positions.sort(key=lambda x: x['market_value_unified'], reverse=True)
+
+    clean_analytics['all_positions'] = all_positions
+
+    total_return_pct_unified = total_pnl_twd / total_cost_twd if total_cost_twd > 0 else 0
+    clean_analytics['all_summary'] = {
+        'total_value_twd': total_market_value_twd,
+        'total_pnl_twd': total_pnl_twd,
+        'total_cost_twd': total_cost_twd,
+        'total_return_pct': total_return_pct_unified,
+        'position_count': len(all_positions)
+    }
+
     # 6. Render Templates
     pages = [
         ('index.html', 'dashboard.html'),
@@ -127,6 +192,9 @@ def generate_html_report(input_file=None, tw_inventory_file=None):
     # Conditionally add TW positions page
     if tw_data:
         pages.append(('tw_positions.html', 'tw_positions.html'))
+    
+    # Always generate all_positions.html
+    pages.append(('all_positions.html', 'all_positions.html'))
     
     print("Rendering templates...")
     # Pass all analytics data to template

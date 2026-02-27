@@ -1,17 +1,21 @@
 # Investment Portfolio Dashboard
 
-This Python project generates a comprehensive investment portfolio dashboard in Excel from your trade logs. It automatically fetches market data using `yfinance` to calculate current valuations, P&L, and exposure analysis.
+This Python project generates a comprehensive investment portfolio dashboard from your trade logs. It automatically fetches market data using `yfinance` and provides both an Excel summary and a rich interactive HTML dashboard for current valuations, P&L, exposure analysis, and historical tracking.
 
 ## Features
 
-- **Automated Data Processing**: Parses trade logs (CSV) from Fubon Securities (or standard format).
-- **Market Data Integration**: Fetches daily closing prices and company info (Sector, Industry, Country) via Yahoo Finance.
-- **Excel Dashboard**:
-    - **Positions**: Detailed breakdown of current holdings with unrealized P&L.
-    - **Equity Curve**: Visualizes Net Asset Value (NAV) growth and Drawdowns over time.
-    - **Dashboard**: Key Performance Indicators (KPIs) and allocation charts.
+- **Automated Data Processing**: Parses trade logs (CSV) from brokers (e.g., Fubon Securities).
+- **Multi-Market Support (New)**: Combines US stock trades and Taiwan stock inventory.
+- **Market Data Integration**: Fetches daily closing prices, company info, and Beta via Yahoo Finance.
+- **Interactive HTML Dashboard 📊**:
+    - **Dashboard**: Key Performance Indicators (KPIs) and Asset Allocation Widget.
+    - **Unified Holdings**: Consolidated view of all global positions.
+    - **Positions**: Detailed breakdowns of US and Taiwan holdings.
+    - **Historical Transactions**: Track your trade history over time.
+    - **Risk & Stress Testing**: Beta analysis, correlation matrices, and customizable stress-testing.
     - **Sector & Geographic Exposure**: Analyzes portfolio diversification.
-- **Privacy Focused**: Processes data locally. Your trade logs are never sent to any server other than for price fetching (ticker symbols only).
+- **Excel Dashboard**: Provides a supplementary Excel output with equity curves and position breakdowns.
+- **Privacy Focused**: Processes data locally. Your trade logs remain on your machine.
 
 ## Prerequisites
 
@@ -29,64 +33,64 @@ This Python project generates a comprehensive investment portfolio dashboard in 
 
 ## Usage
 
-1.  **Prepare Trade Log**:
-    - Export your trade history from your broker as a CSV file.
-    - Place the CSV file in the `trade_source` directory.
-    - Ensure the file is named `fubon-trade-record_20260224.csv` (or update `INPUT_FILE` in `build_portfolio.py`).
+### 1. Generating the HTML Dashboard (Recommended)
 
-2.  **Run the Script**:
+Generate a complete set of interactive HTML reports viewable in any modern browser.
 
-    **Default (uses `trade_source/fubon-trade-record_20260224.csv`):**
-    ```bash
-    python build_portfolio.py
-    ```
+**Basic Usage:**
+Defaults to `trade_source/fubon-trade-record_20260224.csv`.
+```bash
+python generate_html.py
+```
 
-    **指定自定義檔案 (需輸入相對或絕對路徑):**
-    ```bash
-    python build_portfolio.py trade_source/fubon-trade_20260219.csv
-    ```
+**Custom Input File:**
+```bash
+python generate_html.py trade_source/your_us_history.csv
+```
 
-3.  **View Results**:
-    - The generated Excel dashboard will be in the `trade_output` directory, named with the format `portfolio_dashboard_YYYYMMDD.xlsx`.
+**Include Taiwan Stock Inventory (New):**
+Loads your Taiwan stock holdings along with US positions to generate a unified portfolio view.
+```bash
+python generate_html.py trade_source/fubon-trade-record.csv --tw-inventory trade_source/ctbc-inventory.csv
+```
 
-## Daily Updates (New)
+**View Results:**
+Open `trade_output/html/index.html` in your browser.
 
-You can update your portfolio incrementally without rebuilding.
+### 2. Generating the Excel Dashboard
 
-### 1. Full Update (Trades + Prices)
+Generates an Excel (`.xlsx`) dashboard with equity curves and portfolio summary.
+
+**Default:**
+```bash
+python build_portfolio.py
+```
+
+**Custom Input File:**
+```bash
+python build_portfolio.py trade_source/your_trade_file.csv
+```
+
+**View Results:**
+The generated Excel dashboard will be in the `trade_output` directory.
+
+### 3. Daily Updates
+
+You can update your portfolio prices incrementally without rebuilding everything from scratch.
+
+**Full Update (Trades + Prices):**
 Syncs new trades from your CSV and fetches the latest market prices.
 ```bash
 python update_portfolio.py
 ```
 
-### 2. Quick Update (Prices Only)
-Fetches only the latest market prices (skips trade check).
+**Quick Update (Prices Only):**
+Fetches only the latest market prices (skips trade history check).
 ```bash
 python update_portfolio.py quick
 ```
 
-## HTML Dashboard (New) 📊
-
-Generate a set of interactive HTML reports (Positions, Risk, Options, etc.) viewable in any browser.
-
-1.  **Install Dependency**:
-    ```bash
-    pip install jinja2
-    ```
-
-2.  **Generate Reports**:
-    ```bash
-    python generate_html.py
-    ```
-    *可選：指定特定交易檔案 (需輸入相對或絕對路徑):*
-    ```bash
-    python generate_html.py trade_source/fubon-trade_20260219.csv
-    ```
-
-3.  **View**:
-    Open `trade_output/html/index.html` in your browser.
-
-### 3. Add Trade Manually
+**Add Trade Manually:**
 Appends a single trade to your CSV and runs a full update.
 ```bash
 # Usage: python update_portfolio.py trade DATE TICKER SIDE QTY PRICE
@@ -95,11 +99,14 @@ python update_portfolio.py trade 2026-02-18 NVDA BUY 10 125.50
 
 ## Project Structure
 
-- `build_portfolio.py`: Main script logic.
+- `generate_html.py`: Generates interactive HTML reports.
+- `build_portfolio.py`: Main logic for building Excel dashboards.
 - `update_portfolio.py`: Script for daily incremental updates.
-- `requirements.txt`: Python dependencies.
+- `portfolio_analytics.py`: Calculates risk, exposure, and performance metrics.
+- `tw_stock_loader.py`: Handles loading and processing Taiwan stock inventories.
+- `templates/`: Jinja2 HTML templates for the interactive web dashboard.
 - `trade_source/`: Directory for input CSV files (Git-ignored for privacy).
-- `trade_output/`: Directory for generated Excel files (Git-ignored).
+- `trade_output/`: Directory for generated Excel and HTML files (Git-ignored).
 
 ## License
 
