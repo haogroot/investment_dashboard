@@ -179,20 +179,60 @@ def generate_html_report(input_file=None, tw_inventory_file=None, property_file=
         'position_count': len(all_positions)
     }
 
-    # 5.5 Load Property Data (if provided)
+    # 5.5 Load Property Data (multi-person support)
     property_data = None
+    family_members = []
     if property_file:
-        property_data = property_loader.load_property_data(property_file)
-        if property_data:
-            clean_analytics['property'] = property_data
-            clean_analytics['family_summary'] = {
-                'total_couple_assets_twd': property_data['liquid_funds'] + total_market_value_twd + property_data['real_estate'] + property_data['liabilities'],
-                'total_investments_twd': total_market_value_twd,
-                'total_liquid_funds_twd': property_data['liquid_funds'],
-                'total_real_estate_twd': property_data['real_estate'],
-                'total_liabilities_twd': property_data['liabilities']
+        # property_file is actually a directory path now
+        members = property_loader.load_property_dir(property_file)
+        if members:
+            # Build per-member summaries
+            combined_liquid = 0
+            combined_real_estate = 0
+            combined_liabilities = 0
+            combined_details = {'emergency_fund': [], 'demand_deposit': [], 'fx_cash': [], 'fx_deposit': []}
+
+            for name, pdata in members:
+                member_summary = {
+                    'name': name,
+                    'property': pdata,
+                    'summary': {
+                        'total_assets_twd': pdata['liquid_funds'] + pdata['real_estate'] + pdata['liabilities'],
+                        'total_liquid_funds_twd': pdata['liquid_funds'],
+                        'total_real_estate_twd': pdata['real_estate'],
+                        'total_liabilities_twd': pdata['liabilities']
+                    }
+                }
+                family_members.append(member_summary)
+                combined_liquid += pdata['liquid_funds']
+                combined_real_estate += pdata['real_estate']
+                combined_liabilities += pdata['liabilities']
+                # Merge details
+                for dk in combined_details:
+                    for item in pdata.get('details', {}).get(dk, []):
+                        combined_details[dk].append({'name': f"{name} - {item['name']}", 'amount': item['amount']})
+
+            # Combined property data (union of all members + investments)
+            property_data = {
+                'emergency_fund': sum(m['property']['emergency_fund'] for m in family_members),
+                'demand_deposit': sum(m['property']['demand_deposit'] for m in family_members),
+                'fx_cash': sum(m['property']['fx_cash'] for m in family_members),
+                'fx_deposit': sum(m['property']['fx_deposit'] for m in family_members),
+                'real_estate': combined_real_estate,
+                'liabilities': combined_liabilities,
+                'liquid_funds': combined_liquid,
+                'details': combined_details
             }
-            print(f"Loaded property data. Family Total Assets: {clean_analytics['family_summary']['total_couple_assets_twd']:,.0f} TWD")
+            clean_analytics['property'] = property_data
+            clean_analytics['family_members'] = family_members
+            clean_analytics['family_summary'] = {
+                'total_couple_assets_twd': combined_liquid + total_market_value_twd + combined_real_estate + combined_liabilities,
+                'total_investments_twd': total_market_value_twd,
+                'total_liquid_funds_twd': combined_liquid,
+                'total_real_estate_twd': combined_real_estate,
+                'total_liabilities_twd': combined_liabilities
+            }
+            print(f"Loaded property data for {len(family_members)} members. Family Total Assets: {clean_analytics['family_summary']['total_couple_assets_twd']:,.0f} TWD")
 
     # 7. Goal Tracking
     goal_config_path = BASE_DIR / 'goal_config.json'
@@ -258,8 +298,8 @@ if __name__ == "__main__":
     parser.add_argument('input_file', nargs='?', default=None, help='Input trade CSV filename (default: configured INPUT_FILE)')
     parser.add_argument('--tw-inventory', dest='tw_inventory', default=None,
                         help='Taiwan stock inventory CSV file path (e.g. trade_source/ctbc-trade-record_20260225.csv)')
-    parser.add_argument('--property-file', dest='property_file', default=None,
-                        help='Excel file containing family property and liabilities (e.g., property/Howard_202601.xlsx)')
+    parser.add_argument('--property-file', '--property-dir', dest='property_file', default=None,
+                        help='Directory containing family property Excel files (e.g., property/)')
     args = parser.parse_args()
 
     # Resolve Input File Path if provided

@@ -8,36 +8,6 @@
         margin: 0 auto;
     }
 
-    /* Segmented Control */
-    .segmented-control {
-        display: flex;
-        background-color: var(--card-bg);
-        /* Use base card bg */
-        border-radius: 20px;
-        padding: 4px;
-        margin-bottom: 24px;
-        border: 1px solid var(--card-border);
-    }
-
-    .segmented-control .btn-segment {
-        flex: 1;
-        text-align: center;
-        padding: 8px 16px;
-        border-radius: 16px;
-        color: var(--text-muted);
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        border: none;
-        background: transparent;
-    }
-
-    .segmented-control .btn-segment.active {
-        background-color: rgba(255, 255, 255, 0.1);
-        /* Subtle highlight */
-        color: var(--text-color);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
 
     /* Month Divider */
     .month-divider {
@@ -166,11 +136,6 @@
 {% block content %}
 <div class="history-container fade-in">
 
-    <!-- Segmented Control -->
-    <div class="segmented-control">
-        <button class="btn-segment active" data-i18n="history_tab_history">History</button>
-        <button class="btn-segment" data-i18n="history_tab_upcoming">Upcoming</button>
-    </div>
 
     <!-- History List -->
     <div class="history-list">

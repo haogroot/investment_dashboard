@@ -200,11 +200,42 @@ def load_property_data(file_path):
         print(f"Error parsing property file: {e}")
         return None
 
+def load_property_dir(dir_path):
+    """
+    Scans a directory for .xlsx files, loads each one, and returns a list of
+    (person_name, property_data) tuples sorted by name.
+    Person name is derived from the filename before the first underscore or dot.
+    E.g. 'Howard_202601.xlsx' -> 'Howard', 'Debby_202510.xlsx' -> 'Debby'
+    """
+    dir_path = Path(dir_path)
+    if not dir_path.is_dir():
+        print(f"Property directory not found: {dir_path}")
+        return []
+
+    members = []
+    for f in sorted(dir_path.glob("*.xlsx")):
+        # Skip Zone.Identifier files or temp files
+        if ':' in f.name or f.name.startswith('~'):
+            continue
+        # Derive person name from filename (part before first '_' or '.')
+        name = f.stem.split('_')[0]
+        data = load_property_data(f)
+        if data:
+            members.append((name, data))
+
+    print(f"Loaded property data for {len(members)} members: {[m[0] for m in members]}")
+    return members
+
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:
         load_property_data(sys.argv[1])
     else:
-        # Default test
-        test_path = Path("property/Howard_202601.xlsx")
-        load_property_data(test_path)
+        # Default test: load entire directory
+        members = load_property_dir("property")
+        for name, data in members:
+            print(f"\n--- {name} ---")
+            for k, v in data.items():
+                if k != 'details':
+                    print(f"  {k}: {v}")
