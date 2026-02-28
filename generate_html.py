@@ -12,6 +12,7 @@ import build_portfolio
 import portfolio_analytics
 import tw_stock_loader
 import property_loader
+import utils
 
 # Configuration
 BASE_DIR = Path(__file__).parent
@@ -31,13 +32,21 @@ def setup_directories():
     
     # Create dummy static CSS/JS if not exist (will handle later)
 
-def generate_html_report(input_file=None, tw_inventory_file=None, property_file=None):
+def generate_html_report(input_file=None, source_dir=None, property_file=None):
     print("Loading data...")
     # 1. Load Data
-    df_trades, market_data, df_ref, all_dates = build_portfolio.load_process_data(input_file)
+    
+    us_file_path = input_file
+    if source_dir:
+        latest_us_file = utils.get_latest_us_file(source_dir)
+        if latest_us_file:
+            print(f"Auto-selected latest US file: {latest_us_file.name}")
+            us_file_path = latest_us_file
+            
+    df_trades, market_data, df_ref, all_dates = build_portfolio.load_process_data(us_file_path)
     
     if df_trades is None:
-        print("No trades found. Aborting.")
+        print("No US trades found. Aborting.")
         return
 
     # 2. Calculate State (Units, Cash)
@@ -107,12 +116,45 @@ def generate_html_report(input_file=None, tw_inventory_file=None, property_file=
 
     # 5. Load Taiwan Stock Data (if provided)
     tw_data = None
-    if tw_inventory_file:
-        tw_data = tw_stock_loader.load_tw_inventory(tw_inventory_file)
-        if tw_data:
-            clean_analytics['tw_positions'] = tw_data['tw_positions']
-            clean_analytics['tw_summary'] = tw_data['tw_summary']
-            print(f"Loaded {len(tw_data['tw_positions'])} Taiwan stock positions")
+    all_tw_positions = []
+    tw_summary = {
+        'total_value': 0, 'total_cost': 0, 'total_pnl': 0, 
+        'stock_count': 0, 'etf_count': 0, 'position_count': 0
+    }
+    
+    if source_dir:
+        source_dir_path = Path(source_dir)
+        if source_dir_path.is_dir():
+            print(f"Scanning for latest TW stock files in {source_dir_path}...")
+            
+            tw_files_to_process = utils.get_latest_tw_files(source_dir_path)
+            
+            for f in tw_files_to_process:
+                owner = f.name.split('_')[0] if '_' in f.name else 'Unknown'
+                print(f"Processing {f.name} for owner {owner}...")
+                data = tw_stock_loader.load_tw_inventory(f, owner=owner)
+                if data:
+                    all_tw_positions.extend(data['tw_positions'])
+                    tw_summary['total_value'] += data['tw_summary'].get('total_value', 0)
+                    tw_summary['total_cost'] += data['tw_summary'].get('total_cost', 0)
+                    tw_summary['total_pnl'] += data['tw_summary'].get('total_pnl', 0)
+                    tw_summary['stock_count'] += data['tw_summary'].get('stock_count', 0)
+                    tw_summary['etf_count'] += data['tw_summary'].get('etf_count', 0)
+            
+            if all_tw_positions:
+                all_tw_positions.sort(key=lambda x: x['market_value'], reverse=True)
+                for pos in all_tw_positions:
+                    pos['weight'] = pos['market_value'] / tw_summary['total_value'] if tw_summary['total_value'] > 0 else 0
+                
+                tw_summary['position_count'] = len(all_tw_positions)
+                tw_summary['total_return_pct'] = (tw_summary['total_pnl'] / tw_summary['total_cost']) if tw_summary['total_cost'] > 0 else 0
+                tw_data = {
+                    'tw_positions': all_tw_positions,
+                    'tw_summary': tw_summary
+                }
+                clean_analytics['tw_positions'] = tw_data['tw_positions']
+                clean_analytics['tw_summary'] = tw_data['tw_summary']
+                print(f"Loaded {len(tw_data['tw_positions'])} Taiwan stock positions from {source_dir}")
 
     # Combine US and TW Data
     all_positions = []
@@ -296,8 +338,8 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='Build HTML Dashboard')
     parser.add_argument('input_file', nargs='?', default=None, help='Input trade CSV filename (default: configured INPUT_FILE)')
-    parser.add_argument('--tw-inventory', dest='tw_inventory', default=None,
-                        help='Taiwan stock inventory CSV file path (e.g. trade_source/ctbc-trade-record_20260225.csv)')
+    parser.add_argument('--source-dir', dest='source_dir', default=None,
+                        help='Directory containing stock inventory/trade CSV files (e.g. trade_source/)')
     parser.add_argument('--property-file', '--property-dir', dest='property_file', default=None,
                         help='Directory containing family property Excel files (e.g., property/)')
     args = parser.parse_args()
@@ -307,13 +349,13 @@ if __name__ == "__main__":
     if args.input_file:
         input_path = Path(args.input_file)
 
-    tw_inventory_path = None
-    if args.tw_inventory:
-        tw_inventory_path = Path(args.tw_inventory)
+    source_dir_path = None
+    if args.source_dir:
+        source_dir_path = Path(args.source_dir)
 
     property_file_path = None
     if args.property_file:
         property_file_path = Path(args.property_file)
 
     setup_directories()
-    generate_html_report(input_path, tw_inventory_file=tw_inventory_path, property_file=property_file_path)
+    generate_html_report(input_path, source_dir=source_dir_path, property_file=property_file_path)

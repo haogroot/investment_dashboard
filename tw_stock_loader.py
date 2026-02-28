@@ -9,12 +9,13 @@ import yfinance as yf
 from pathlib import Path
 
 
-def load_tw_inventory(csv_path):
+def load_tw_inventory(csv_path, owner='Unknown'):
     """
-    Reads a Taiwan stock inventory CSV (CTBC format) and enriches it with yfinance data.
+    Reads a Taiwan stock inventory CSV (CTBC format) or trade history CSV and enriches it with yfinance data.
 
     Args:
-        csv_path: Path to the CTBC inventory CSV file.
+        csv_path: Path to the CSV file.
+        owner: Name of the family member who owns these positions.
 
     Returns:
         dict with keys:
@@ -37,22 +38,82 @@ def load_tw_inventory(csv_path):
     # Clean column names (strip whitespace and tab characters)
     df.columns = [c.strip().strip('\t') for c in df.columns]
 
-    # --- 2. Column Mapping ---
-    column_mapping = {
-        '股票名稱': 'RawName',
-        '庫存股數': 'Shares',
-        '市價': 'Price',
-        '市值': 'MarketValue',
-        '成交均價': 'AvgCost',
-        '損益兩平價': 'BreakEvenPrice',
-        '投入成本': 'TotalCost',
-        '投資損益': 'PnL',
-        '參考淨值': 'RefNAV',
-        '報酬率(%)': 'ReturnPct',
-        '委託別': 'OrderType',
+    KNOWN_TICKERS = {
+        '中信金': '2891', '京城銀': '2809', '元大台灣50': '0050', '冠德': '2520',
+        '台新新光金': '2887', '台積電': '2330', '國泰金': '2882', '富華新': '3056',
+        '富邦台50': '006208', '復華日本龍頭': '00949', '技嘉': '2376', '新潤': '6186',
+        '新美齊': '2442', '智基': '6294', '欣陸': '3703', '永豐金': '2890',
+        '聯上發': '2537', '長虹': '5534', '順天': '5525',
     }
 
-    df = df.rename(columns=column_mapping)
+    if '淨收付' in df.columns and '成交股數' in df.columns:
+        # Trade History format
+        print(f"[TW] Detected trade history format for {owner}.")
+        df['Date_Parsed'] = pd.to_datetime(df['日期'])
+        df = df.sort_values('Date_Parsed')
+
+        inventory = {}
+        for _, row in df.iterrows():
+            name = str(row['股名']).strip()
+            shares_str = str(row['成交股數']).replace(',', '')
+            shares = pd.to_numeric(shares_str, errors='coerce') or 0
+            net_amt_str = str(row['淨收付']).replace(',', '')
+            net_amt = pd.to_numeric(net_amt_str, errors='coerce') or 0
+            
+            # Apply 1-to-4 stock split for 0050 on trades prior to or on 2025/6/17
+            is_0050 = (name == '元大台灣50' or '0050' in name)
+            if is_0050 and pd.notna(row['Date_Parsed']):
+                if row['Date_Parsed'] <= pd.to_datetime('2025-06-17'):
+                    shares *= 4
+                    
+            if name not in inventory:
+                inventory[name] = {'shares': 0, 'total_cost': 0}
+                
+            if net_amt < 0: # Buy
+                cost = abs(net_amt)
+                inventory[name]['shares'] += shares
+                inventory[name]['total_cost'] += cost
+            elif net_amt > 0: # Sell
+                if inventory[name]['shares'] > 0:
+                    avg_c = inventory[name]['total_cost'] / inventory[name]['shares']
+                    inventory[name]['shares'] -= shares
+                    inventory[name]['total_cost'] -= (shares * avg_c)
+                    if inventory[name]['shares'] <= 0:
+                        inventory[name]['shares'] = 0
+                        inventory[name]['total_cost'] = 0
+
+        inventory_rows = []
+        for name, data in inventory.items():
+            if data['shares'] > 0:
+                avg_c = data['total_cost'] / data['shares'] if data['shares'] > 0 else 0
+                ticker = KNOWN_TICKERS.get(name, name)
+                raw_name = f"{name}({ticker})" if ticker != name else name
+                inventory_rows.append({
+                    'RawName': raw_name,
+                    'Shares': data['shares'],
+                    'AvgCost': avg_c,
+                    'TotalCost': data['total_cost']
+                })
+        df = pd.DataFrame(inventory_rows)
+
+    else:
+        # Inventory format
+        # --- 2. Column Mapping ---
+        column_mapping = {
+            '股票名稱': 'RawName',
+            '庫存股數': 'Shares',
+            '市價': 'Price',
+            '市值': 'MarketValue',
+            '成交均價': 'AvgCost',
+            '損益兩平價': 'BreakEvenPrice',
+            '投入成本': 'TotalCost',
+            '投資損益': 'PnL',
+            '參考淨值': 'RefNAV',
+            '報酬率(%)': 'ReturnPct',
+            '委託別': 'OrderType',
+        }
+
+        df = df.rename(columns=column_mapping)
 
     # --- 3. Filter valid rows (drop summary row and NaN rows) ---
     # The last row is a summary row with '合計' in the Price column
@@ -190,6 +251,7 @@ def load_tw_inventory(csv_path):
             'weight': 0,  # calculated below
             'type': quote_type,
             'beta': info.get('beta'),  # None means no data; template will display '—'
+            'owner': owner,
         })
 
     # Calculate weights

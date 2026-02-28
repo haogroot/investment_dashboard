@@ -6,6 +6,7 @@ import os
 
 import argparse
 from pathlib import Path
+import utils
 
 # --- Configuration ---
 # Use relative paths based on the script directory to handle Windows/WSL mapping automatically
@@ -22,6 +23,13 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 def load_process_data(input_file=None):
     """Reads trade log and fetches market data."""
     target_file = input_file if input_file else INPUT_FILE
+    if target_file and Path(target_file).is_dir():
+        # Fallback to util if dir is passed directly to load_process_data
+        latest_us = utils.get_latest_us_file(target_file)
+        if latest_us:
+            target_file = latest_us
+            print(f"Auto-selected latest US file: {target_file.name}")
+            
     print(f"Reading trade log from {target_file}...")
     try:
         df_trades = pd.read_csv(target_file, encoding='utf-8')
@@ -696,14 +704,21 @@ if __name__ == "__main__":
     # Parse Command Line Arguments
     parser = argparse.ArgumentParser(description='Build Portfolio Dashboard')
     parser.add_argument('input_file', nargs='?', default=None, help='Input trade CSV filename (default: configured INPUT_FILE)')
+    parser.add_argument('--source-dir', dest='source_dir', default=None,
+                        help='Directory containing stock inventory/trade CSV files (e.g. trade_source/)')
     args = parser.parse_args()
 
     # Resolve Input File Path if provided
     input_path = None
     if args.input_file:
         input_path = Path(args.input_file)
+    elif args.source_dir:
+        latest_us = utils.get_latest_us_file(args.source_dir)
+        if latest_us:
+            input_path = latest_us
+            print(f"Auto-selected latest US file from directory: {input_path.name}")
 
-    df_trades, market_data, df_ref, all_dates = load_process_data(input_file=input_path) 
+    df_trades, market_data, df_ref, all_dates = load_process_data(input_file=input_path)
     
     if df_trades is not None:
         # Tickers for portfolio are those in df_ref (excluding SP500 if it was added separately, but df_ref is built from df_trades tickers)

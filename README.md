@@ -44,16 +44,11 @@ Defaults to `trade_source/fubon-trade-record_20260224.csv`.
 python generate_html.py
 ```
 
-**Custom Input File:**
-```bash
-python generate_html.py trade_source/your_us_history.csv
-```
-
-**Include Taiwan Stock Inventory (New):**
-Loads your Taiwan stock holdings along with US positions to generate a unified portfolio view.
-```bash
-python generate_html.py trade_source/fubon-trade-record.csv --tw-inventory trade_source/ctbc-inventory.csv
-```
+2.  **Generate HTML Dashboard:**
+    ```bash
+    python generate_html.py --source-dir trade_source/
+    ```
+    This will load both the latest US trace file for tracking total value/performance and the latest TW formats for component analysis.
 
 **View Results:**
 Open `trade_output/html/index.html` in your browser.
@@ -62,16 +57,16 @@ Open `trade_output/html/index.html` in your browser.
 
 Generates an Excel (`.xlsx`) dashboard with equity curves and portfolio summary.
 
-**Default:**
 ```bash
 python build_portfolio.py
 ```
 
 **Custom Input File:**
 ```bash
-python build_portfolio.py trade_source/your_trade_file.csv
+python build_portfolio.py --source-dir trade_source/
 ```
 
+Defaults to parsing the latest files from `trade_source/` if no parameter is provided.
 **View Results:**
 The generated Excel dashboard will be in the `trade_output` directory.
 
