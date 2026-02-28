@@ -11,6 +11,7 @@ import jinja2
 import build_portfolio
 import portfolio_analytics
 import tw_stock_loader
+import property_loader
 
 # Configuration
 BASE_DIR = Path(__file__).parent
@@ -30,7 +31,7 @@ def setup_directories():
     
     # Create dummy static CSS/JS if not exist (will handle later)
 
-def generate_html_report(input_file=None, tw_inventory_file=None):
+def generate_html_report(input_file=None, tw_inventory_file=None, property_file=None):
     print("Loading data...")
     # 1. Load Data
     df_trades, market_data, df_ref, all_dates = build_portfolio.load_process_data(input_file)
@@ -178,6 +179,21 @@ def generate_html_report(input_file=None, tw_inventory_file=None):
         'position_count': len(all_positions)
     }
 
+    # 5.5 Load Property Data (if provided)
+    property_data = None
+    if property_file:
+        property_data = property_loader.load_property_data(property_file)
+        if property_data:
+            clean_analytics['property'] = property_data
+            clean_analytics['family_summary'] = {
+                'total_couple_assets_twd': property_data['liquid_funds'] + total_market_value_twd + property_data['real_estate'] + property_data['liabilities'],
+                'total_investments_twd': total_market_value_twd,
+                'total_liquid_funds_twd': property_data['liquid_funds'],
+                'total_real_estate_twd': property_data['real_estate'],
+                'total_liabilities_twd': property_data['liabilities']
+            }
+            print(f"Loaded property data. Family Total Assets: {clean_analytics['family_summary']['total_couple_assets_twd']:,.0f} TWD")
+
     # 7. Goal Tracking
     goal_config_path = BASE_DIR / 'goal_config.json'
     if goal_config_path.exists():
@@ -208,6 +224,10 @@ def generate_html_report(input_file=None, tw_inventory_file=None):
     # Conditionally add TW positions page
     if tw_data:
         pages.append(('tw_positions.html', 'tw_positions.html'))
+        
+    # Conditionally add Family Assets page
+    if property_data:
+        pages.append(('family_assets.html', 'family_assets.html'))
     
     # Always generate all_positions.html
     pages.append(('all_positions.html', 'all_positions.html'))
@@ -238,6 +258,8 @@ if __name__ == "__main__":
     parser.add_argument('input_file', nargs='?', default=None, help='Input trade CSV filename (default: configured INPUT_FILE)')
     parser.add_argument('--tw-inventory', dest='tw_inventory', default=None,
                         help='Taiwan stock inventory CSV file path (e.g. trade_source/ctbc-trade-record_20260225.csv)')
+    parser.add_argument('--property-file', dest='property_file', default=None,
+                        help='Excel file containing family property and liabilities (e.g., property/Howard_202601.xlsx)')
     args = parser.parse_args()
 
     # Resolve Input File Path if provided
@@ -249,5 +271,9 @@ if __name__ == "__main__":
     if args.tw_inventory:
         tw_inventory_path = Path(args.tw_inventory)
 
+    property_file_path = None
+    if args.property_file:
+        property_file_path = Path(args.property_file)
+
     setup_directories()
-    generate_html_report(input_path, tw_inventory_file=tw_inventory_path)
+    generate_html_report(input_path, tw_inventory_file=tw_inventory_path, property_file=property_file_path)
