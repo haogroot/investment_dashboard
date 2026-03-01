@@ -11,6 +11,7 @@ import jinja2
 import build_portfolio
 import portfolio_analytics
 import tw_stock_loader
+import tw_trade_loader
 import property_loader
 import utils
 
@@ -155,6 +156,20 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
                 clean_analytics['tw_positions'] = tw_data['tw_positions']
                 clean_analytics['tw_summary'] = tw_data['tw_summary']
                 print(f"Loaded {len(tw_data['tw_positions'])} Taiwan stock positions from {source_dir}")
+
+    # 5.1 Load TW Trade History (e.g. Debby's trade records)
+    tw_trade_history = {}  # {owner: grouped_history}
+    if source_dir:
+        source_dir_path = Path(source_dir)
+        tw_trade_files = utils.get_latest_tw_trade_files(source_dir_path)
+        for owner, fpath in tw_trade_files.items():
+            print(f"Loading TW trade history for {owner} from {fpath.name}...")
+            grouped = tw_trade_loader.load_tw_trade_history(fpath, owner=owner)
+            if grouped:
+                tw_trade_history[owner] = grouped
+
+    if tw_trade_history:
+        clean_analytics['tw_trade_history'] = tw_trade_history
 
     # Combine US and TW Data
     all_positions = []

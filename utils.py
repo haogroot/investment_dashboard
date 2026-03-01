@@ -64,7 +64,34 @@ def get_latest_us_file(directory):
 
 def get_latest_tw_files(directory):
     """
-    Scans the directory and returns a list of the latest TW files for all owners.
+    Scans the directory and returns a list of the latest TW inventory files for all owners.
+    Excludes trade history files (which contain '_trade_' in the broker part).
     """
     latest = find_latest_files(directory)
-    return [path for key, path in latest.items() if key.endswith('_TW')]
+    result = []
+    for key, path in latest.items():
+        if key.endswith('_TW'):
+            # Exclude trade history files (e.g. Debby_TW_trade_20260228.csv)
+            if '_trade_' not in path.name.lower().replace(key.lower() + '_', '', 1).split('_')[0] if '_' in path.name else True:
+                result.append(path)
+    return result
+
+def get_latest_tw_trade_files(directory):
+    """
+    Scans the directory and returns a dict of {owner: path} for the latest TW trade history files.
+    Trade history files have 'trade' in the broker/description part of the filename.
+    e.g. Debby_TW_trade_20260228.csv
+    """
+    latest = find_latest_files(directory)
+    result = {}
+    for key, path in latest.items():
+        if key.endswith('_TW'):
+            # Check if the file is a trade history (filename broker part contains 'trade')
+            # Pattern: {Owner}_TW_{broker}_{date}.csv — check if broker contains 'trade'
+            parts = path.stem.split('_')  # e.g. ['Debby', 'TW', 'trade', '20260228']
+            if len(parts) >= 3:
+                broker_part = '_'.join(parts[2:-1])  # everything between market and date
+                if 'trade' in broker_part.lower():
+                    owner = parts[0]
+                    result[owner] = path
+    return result

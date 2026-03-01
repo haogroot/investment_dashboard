@@ -8,6 +8,46 @@
         margin: 0 auto;
     }
 
+    /* Tab Styling */
+    .history-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        border-bottom: 1px solid var(--card-border);
+        padding-bottom: 0;
+    }
+
+    .history-tab {
+        padding: 10px 20px;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        transition: all 0.25s ease;
+        position: relative;
+        bottom: -1px;
+    }
+
+    .history-tab:hover {
+        color: var(--text-color);
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .history-tab.active {
+        color: var(--primary-color);
+        border-bottom-color: var(--primary-color);
+    }
+
+    .history-tab-panel {
+        display: none;
+    }
+
+    .history-tab-panel.active {
+        display: block;
+    }
 
     /* Month Divider */
     .month-divider {
@@ -130,15 +170,39 @@
     .amount-neutral {
         color: var(--text-color);
     }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        color: var(--text-muted);
+        padding: 60px 20px;
+    }
+
+    .empty-state i {
+        font-size: 2.5rem;
+        margin-bottom: 16px;
+        opacity: 0.4;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="history-container fade-in">
 
+    <!-- Tabs -->
+    <div class="history-tabs">
+        <button class="history-tab active" data-tab="howard-us" data-i18n="history_tab_howard_us">Howard US
+            Stocks</button>
+        {% if data.tw_trade_history %}
+        {% for owner, grouped in data.tw_trade_history.items() %}
+        <button class="history-tab" data-tab="tw-{{ owner|lower }}" data-i18n="history_tab_{{ owner|lower }}_tw">{{
+            owner }} TW Stocks</button>
+        {% endfor %}
+        {% endif %}
+    </div>
 
-    <!-- History List -->
-    <div class="history-list">
+    <!-- Howard US Tab Panel -->
+    <div class="history-tab-panel active" id="panel-howard-us">
         {% if data.history_grouped %}
         {% for month_group in data.history_grouped %}
         <!-- Month Divider -->
@@ -149,7 +213,7 @@
         <!-- Transactions -->
         {% for tx in month_group.trades %}
         <div class="tx-row">
-            <!-- Left Color Bar (Heuristics based on screenshot) -->
+            <!-- Left Color Bar -->
             {% if tx.side == 'Buy' %}
             <div class="tx-color-bar color-yellow"></div>
             {% elif tx.side == 'Sell' %}
@@ -203,32 +267,126 @@
         {% endfor %}
         {% endfor %}
         {% else %}
-        <div class="text-center text-muted mt-5">
-            <p>No historical transactions available.</p>
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <p>No US historical transactions available.</p>
         </div>
         {% endif %}
     </div>
+
+    <!-- TW Trade Tab Panels -->
+    {% if data.tw_trade_history %}
+    {% for owner, grouped in data.tw_trade_history.items() %}
+    <div class="history-tab-panel" id="panel-tw-{{ owner|lower }}">
+        {% if grouped %}
+        {% for month_group in grouped %}
+        <!-- Month Divider -->
+        <div class="month-divider">
+            {{ month_group.month }}
+        </div>
+
+        <!-- Transactions -->
+        {% for tx in month_group.trades %}
+        <div class="tx-row">
+            <!-- Left Color Bar -->
+            {% if tx.side == 'Buy' %}
+            <div class="tx-color-bar color-yellow"></div>
+            {% elif tx.side == 'Sell' %}
+            <div class="tx-color-bar color-orange"></div>
+            {% else %}
+            <div class="tx-color-bar color-cyan"></div>
+            {% endif %}
+
+            <!-- Date Block -->
+            <div class="tx-date-block">
+                <span class="tx-month">{{ tx.month_str }}</span>
+                <span class="tx-day">{{ tx.day_str }}</span>
+            </div>
+
+            <!-- Content -->
+            <div class="tx-content">
+                <div class="tx-title">
+                    <span class="lang-zh-target">{{ tx.side_zh }}</span>
+                    <span class="lang-en-target" style="display:none;">{{ tx.side }}</span>
+                    <span>{{ tx.ticker }}</span> @ <span>{{ tx.price|commas }}</span>
+                </div>
+                <div class="tx-subtitle">
+                    {% if tx.side == 'Buy' %}
+                    <span class="lang-zh-target">台股交易</span><span class="lang-en-target" style="display:none;">TW
+                        Stock</span> &rarr; {{ tx.ticker }}
+                    {% else %}
+                    {{ tx.ticker }} &rarr; <span class="lang-zh-target">台股帳戶</span><span class="lang-en-target"
+                        style="display:none;">TW Account</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Amount (TWD) -->
+            {% if tx.side == 'Buy' %}
+            <div class="tx-amount amount-neutral privacy-sensitive">
+                NT${{ tx.total_val|commas }}
+            </div>
+            {% elif tx.side == 'Sell' %}
+            <div class="tx-amount amount-positive privacy-sensitive">
+                + NT${{ tx.total_val|commas }}
+            </div>
+            {% else %}
+            <div class="tx-amount amount-negative privacy-sensitive">
+                - NT${{ tx.total_val|commas }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endfor %}
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <p>No TW historical transactions available.</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
 
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    // Tab switching logic
+    document.querySelectorAll('.history-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            // Deactivate all tabs
+            document.querySelectorAll('.history-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.history-tab-panel').forEach(p => p.classList.remove('active'));
+
+            // Activate clicked tab
+            tab.classList.add('active');
+            const panelId = 'panel-' + tab.getAttribute('data-tab');
+            document.getElementById(panelId).classList.add('active');
+        });
+    });
+
     // Custom logic to handle the internal side labels translation alongside base.html
     function updateHistoryItemsLang() {
         const currentLang = localStorage.getItem('lang') || 'en';
         document.querySelectorAll('.tx-row').forEach(row => {
-            const zhEl = row.querySelector('.lang-zh-target');
-            const enEl = row.querySelector('.lang-en-target');
-            if (zhEl && enEl) {
-                if (currentLang === 'en') {
-                    zhEl.style.display = 'none';
-                    enEl.style.display = 'inline';
-                } else {
-                    zhEl.style.display = 'inline';
-                    enEl.style.display = 'none';
-                }
-            }
+            row.querySelectorAll('.lang-zh-target').forEach(zhEl => {
+                zhEl.style.display = currentLang === 'en' ? 'none' : 'inline';
+            });
+            row.querySelectorAll('.lang-en-target').forEach(enEl => {
+                enEl.style.display = currentLang === 'en' ? 'inline' : 'none';
+            });
+        });
+
+        // Also update subtitle lang targets
+        document.querySelectorAll('.tx-subtitle').forEach(sub => {
+            sub.querySelectorAll('.lang-zh-target').forEach(zhEl => {
+                zhEl.style.display = currentLang === 'en' ? 'none' : 'inline';
+            });
+            sub.querySelectorAll('.lang-en-target').forEach(enEl => {
+                enEl.style.display = currentLang === 'en' ? 'inline' : 'none';
+            });
         });
     }
 
