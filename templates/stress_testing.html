@@ -9,7 +9,27 @@
         <p class="text-muted mb-4" data-i18n="desc_stress">Scenario analysis from -50% crash to +50% rally, showing both
             unhedged and option-hedged impacts with 1Y return context.</p>
 
-        <!-- Stress Testing Table -->
+        
+        <!-- Owner Tabs -->
+        <ul class="nav nav-tabs mb-4 border-secondary" id="ownerTabs_stress_testing" role="tablist">
+            {% for member in ['All', 'Howard', 'Debby'] %}
+            <li class="nav-item" role="presentation">
+                <button
+                    class="nav-link {% if loop.first %}active tab-selected fw-bold border-bottom border-primary border-3 bg-transparent text-light{% else %}text-muted bg-transparent border-0{% endif %}"
+                    id="tab-stress_testing-{{ member|lower }}" data-bs-toggle="tab" data-bs-target="#pane-stress_testing-{{ member|lower }}"
+                    type="button" role="tab" style="font-size: 1.1rem; padding: 0.5rem 1.5rem;"
+                    data-i18n="tab_{{ member|lower }}">
+                    {% if member == 'All' %}全部成員 (All){% else %}{{ member }}{% endif %}
+                </button>
+            </li>
+            {% endfor %}
+        </ul>
+        
+        <div class="tab-content">
+            {% for member in ['All', 'Howard', 'Debby'] %}
+            {% set m_data = data.member_analytics[member] %}
+            <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="pane-stress_testing-{{ member|lower }}" role="tabpanel">
+<!-- Stress Testing Table -->
         <div class="card p-4">
             <h5 data-i18n="stress_test" class="mb-3">Stress Testing (Beta Sensitivity)</h5>
             <div class="table-responsive">
@@ -26,7 +46,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for res in data.stress_test %}
+                        {% for res in m_data.stress_test %}
                         <tr>
                             <td><strong>{{ res.scenario }}</strong></td>
                             <td class="text-end">{{ res.market_change | pct }}</td>
@@ -61,6 +81,10 @@
                         data-i18n="stress_note_2">Hedged Impact includes the estimated intrinsic value change of Option
                         positions at expiration.</span></p>
             </div>
+        </div>
+
+            </div>
+            {% endfor %}
         </div>
     </div>
 </div>

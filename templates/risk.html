@@ -13,144 +13,189 @@
             }
         </style>
 
-        <!-- Risk Metrics Overview Cards -->
-        <div class="row mb-4">
-            <!-- Portfolio Overview -->
-            <div class="col-md-3 mb-3">
-                <div class="card h-100 p-3">
-                    <h6 class="text-muted mb-2" data-i18n="port_overview">Portfolio Overview</h6>
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="metric-label" data-i18n="ann_return" data-i18n-title="tt_ann_return">Annualized
-                            Return</span>
-                        <span class="fw-bold {{ 'text-green' if data.dashboard.ann_return >= 0 else 'text-red' }}">
-                            {{ data.dashboard.ann_return | pct }}
-                        </span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="metric-label" data-i18n="ann_volatility"
-                            data-i18n-title="tt_ann_volatility">Annualized Vol</span>
-                        <span class="fw-bold text-warning">{{ data.dashboard.ann_volatility | pct }}</span>
-                    </div>
-                    <div
-                        class="d-flex justify-content-between align-items-center mb-1 mt-2 pt-2 border-top border-secondary">
-                        <span data-i18n="total_value_usd">Total Value (USD)</span>
-                        <span class="fw-bold privacy-sensitive">{{ data.dashboard.nav | currency }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <span data-i18n="total_value_ntd">Total Value (NTD)</span>
-                        <span class="fw-bold privacy-sensitive">NT{{ data.dashboard.nav_twd | currency }}</span>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Risk-Adjusted Returns -->
-            <div class="col-md-3 mb-3">
-                <div class="card h-100 p-3">
-                    <h6 class="text-muted mb-2" data-i18n="risk_adj_ret">Risk-Adjusted Returns</h6>
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="metric-label" data-i18n="sharpe" data-i18n-title="tt_sharpe">Sharpe Ratio</span>
-                        <span class="fw-bold">{{ '%.2f'|format(data.dashboard.sharpe) }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="metric-label" data-i18n="sortino" data-i18n-title="tt_sortino">Sortino Ratio</span>
-                        <span class="fw-bold">{{ '%.2f'|format(data.dashboard.sortino) }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="metric-label" data-i18n="calmar" data-i18n-title="tt_calmar">Calmar Ratio</span>
-                        <span class="fw-bold">{{ '%.2f'|format(data.dashboard.calmar) }}</span>
-                    </div>
-                    <div
-                        class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-secondary">
-                        <span class="metric-label" data-i18n="max_dd" data-i18n-title="tt_max_dd">Max Drawdown</span>
-                        <span class="fw-bold text-red">{{ data.dashboard.max_drawdown | pct }}</span>
-                    </div>
-                </div>
-            </div>
+        <!-- Owner Tabs -->
+        <ul class="nav nav-tabs mb-4 border-secondary" id="ownerTabs_risk" role="tablist">
+            {% for member in ['All', 'Howard', 'Debby'] %}
+            <li class="nav-item" role="presentation">
+                <button
+                    class="nav-link {% if loop.first %}active tab-selected fw-bold border-bottom border-primary border-3 bg-transparent text-light{% else %}text-muted bg-transparent border-0{% endif %}"
+                    id="tab-risk-{{ member|lower }}" data-bs-toggle="tab" data-bs-target="#pane-risk-{{ member|lower }}"
+                    type="button" role="tab" style="font-size: 1.1rem; padding: 0.5rem 1.5rem;"
+                    data-i18n="tab_{{ member|lower }}">
+                    {% if member == 'All' %}全部成員 (All){% else %}{{ member }}{% endif %}
+                </button>
+            </li>
+            {% endfor %}
+        </ul>
 
-            <!-- Value at Risk -->
-            <div class="col-md-3 mb-3">
-                <div class="card h-100 p-3">
-                    <h6 class="text-muted mb-2" data-i18n="var_title">Value at Risk (Daily)</h6>
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="metric-label" data-i18n="var_95" data-i18n-title="tt_var_95">VaR 95%</span>
-                        <span class="fw-bold text-red">{{ data.dashboard.var_95 | pct }}</span>
+        <div class="tab-content">
+            {% for member in ['All', 'Howard', 'Debby'] %}
+            {% set m_data = data.member_analytics[member] %}
+            <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="pane-risk-{{ member|lower }}"
+                role="tabpanel">
+                <!-- Risk Metrics Overview Cards -->
+                <div class="row mb-4">
+                    <!-- Portfolio Overview -->
+                    <div class="col-md-3 mb-3">
+                        <div class="card h-100 p-3">
+                            <h6 class="text-muted mb-2" data-i18n="port_overview">Portfolio Overview</h6>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="metric-label" data-i18n="ann_return"
+                                    data-i18n-title="tt_ann_return">Annualized
+                                    Return</span>
+                                <span
+                                    class="fw-bold {{ 'text-green' if m_data.dashboard.ann_return >= 0 else 'text-red' }}">
+                                    {{ m_data.dashboard.ann_return | pct }}
+                                </span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="metric-label" data-i18n="ann_volatility"
+                                    data-i18n-title="tt_ann_volatility">Annualized Vol</span>
+                                <span class="fw-bold text-warning">{{ m_data.dashboard.ann_volatility | pct }}</span>
+                            </div>
+                            <div
+                                class="d-flex justify-content-between align-items-center mb-1 mt-2 pt-2 border-top border-secondary">
+                                <span data-i18n="total_value_usd">Total Value (USD)</span>
+                                <span class="fw-bold privacy-sensitive">{{ m_data.dashboard.nav | currency }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span data-i18n="total_value_ntd">Total Value (NTD)</span>
+                                <span class="fw-bold privacy-sensitive">NT{{ m_data.dashboard.nav_twd | currency
+                                    }}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="metric-label" data-i18n="var_99" data-i18n-title="tt_var_99">VaR 99%</span>
-                        <span class="fw-bold text-red">{{ data.dashboard.var_99 | pct }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="metric-label" data-i18n="cvar_95" data-i18n-title="tt_cvar_95">CVaR 95%</span>
-                        <span class="fw-bold text-red">{{ data.dashboard.cvar_95 | pct }}</span>
-                    </div>
-                    <div
-                        class="d-flex justify-content-between align-items-center mt-1 pt-2 border-top border-secondary">
-                        <span class="metric-label" data-i18n="beta_port" data-i18n-title="tt_beta_port">Portfolio
-                            Beta</span>
-                        <span class="fw-bold">{{ '%.2f'|format(data.dashboard.beta) }}</span>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Distribution Shape -->
-            <div class="col-md-3 mb-3">
-                <div class="card h-100 p-3">
-                    <h6 class="text-muted mb-2" data-i18n="dist_shape">Distribution Shape</h6>
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="metric-label" data-i18n="skewness" data-i18n-title="tt_skewness">Skewness</span>
-                        <span class="fw-bold">{{ '%.2f'|format(data.dashboard.skewness) }}</span>
+                    <!-- Risk-Adjusted Returns -->
+                    <div class="col-md-3 mb-3">
+                        <div class="card h-100 p-3">
+                            <h6 class="text-muted mb-2" data-i18n="risk_adj_ret">Risk-Adjusted Returns</h6>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="metric-label" data-i18n="sharpe" data-i18n-title="tt_sharpe">Sharpe
+                                    Ratio</span>
+                                <span class="fw-bold">{{ '%.2f'|format(m_data.dashboard.sharpe) }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="metric-label" data-i18n="sortino" data-i18n-title="tt_sortino">Sortino
+                                    Ratio</span>
+                                <span class="fw-bold">{{ '%.2f'|format(m_data.dashboard.sortino) }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="metric-label" data-i18n="calmar" data-i18n-title="tt_calmar">Calmar
+                                    Ratio</span>
+                                <span class="fw-bold">{{ '%.2f'|format(m_data.dashboard.calmar) }}</span>
+                            </div>
+                            <div
+                                class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-secondary">
+                                <span class="metric-label" data-i18n="max_dd" data-i18n-title="tt_max_dd">Max
+                                    Drawdown</span>
+                                <span class="fw-bold text-red">{{ m_data.dashboard.max_drawdown | pct }}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="metric-label" data-i18n="kurtosis" data-i18n-title="tt_kurtosis">Kurtosis</span>
-                        <span class="fw-bold">{{ '%.2f'|format(data.dashboard.kurtosis) }}</span>
+
+                    <!-- Value at Risk -->
+                    <div class="col-md-3 mb-3">
+                        <div class="card h-100 p-3">
+                            <h6 class="text-muted mb-2" data-i18n="var_title">Value at Risk (Daily)</h6>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="metric-label" data-i18n="var_95" data-i18n-title="tt_var_95">VaR 95%</span>
+                                <span class="fw-bold text-red">{{ m_data.dashboard.var_95 | pct }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="metric-label" data-i18n="var_99" data-i18n-title="tt_var_99">VaR 99%</span>
+                                <span class="fw-bold text-red">{{ m_data.dashboard.var_99 | pct }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="metric-label" data-i18n="cvar_95" data-i18n-title="tt_cvar_95">CVaR
+                                    95%</span>
+                                <span class="fw-bold text-red">{{ m_data.dashboard.cvar_95 | pct }}</span>
+                            </div>
+                            <div
+                                class="d-flex justify-content-between align-items-center mt-1 pt-2 border-top border-secondary">
+                                <span class="metric-label" data-i18n="beta_port"
+                                    data-i18n-title="tt_beta_port">Portfolio
+                                    Beta</span>
+                                <span class="fw-bold">{{ '%.2f'|format(m_data.dashboard.beta) }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Distribution Shape -->
+                    <div class="col-md-3 mb-3">
+                        <div class="card h-100 p-3">
+                            <h6 class="text-muted mb-2" data-i18n="dist_shape">Distribution Shape</h6>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="metric-label" data-i18n="skewness"
+                                    data-i18n-title="tt_skewness">Skewness</span>
+                                <span class="fw-bold">{{ '%.2f'|format(m_data.dashboard.skewness) }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="metric-label" data-i18n="kurtosis"
+                                    data-i18n-title="tt_kurtosis">Kurtosis</span>
+                                <span class="fw-bold">{{ '%.2f'|format(m_data.dashboard.kurtosis) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Individual Position Risk -->
+                <div class="card p-4 mb-4">
+                    <h5 data-i18n="indiv_pos_risk" class="mb-3">Individual Position Risk</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-borderless align-middle sortable">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="ticker" class="cursor-pointer">Ticker <i
+                                            class="fas fa-sort text-muted ms-1"></i></th>
+                                    <th data-i18n="name" class="cursor-pointer">Name <i
+                                            class="fas fa-sort text-muted ms-1"></i></th>
+                                    <th class="text-end cursor-pointer metric-label" data-i18n="ann_return"
+                                        data-i18n-title="tt_ann_return">Ann. Return <i
+                                            class="fas fa-sort text-muted ms-1"></i>
+                                    </th>
+                                    <th class="text-end cursor-pointer metric-label" data-i18n="ann_volatility"
+                                        data-i18n-title="tt_ann_volatility">Ann. Vol <i
+                                            class="fas fa-sort text-muted ms-1"></i>
+                                    </th>
+                                    <th class="text-end cursor-pointer metric-label" data-i18n="sharpe"
+                                        data-i18n-title="tt_sharpe">Sharpe <i class="fas fa-sort text-muted ms-1"></i>
+                                    </th>
+                                    <th class="text-end cursor-pointer metric-label" data-i18n="max_dd"
+                                        data-i18n-title="tt_max_dd">Max DD <i class="fas fa-sort text-muted ms-1"></i>
+                                    </th>
+                                    <th class="text-end cursor-pointer metric-label" data-i18n="var_95"
+                                        data-i18n-title="tt_var_95">VaR 95% <i class="fas fa-sort text-muted ms-1"></i>
+                                    </th>
+                                    <th class="text-end cursor-pointer metric-label" data-i18n="beta"
+                                        data-i18n-title="tt_beta_port">Beta <i class="fas fa-sort text-muted ms-1"></i>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pos in m_data.positions %}
+                                <tr>
+                                    <td><strong>{{ pos.ticker }}</strong></td>
+                                    <td><span class="text-muted small text-truncate"
+                                            style="max-width: 150px; display: inline-block;" title="{{ pos.name }}">{{
+                                            pos.name }}</span></td>
+                                    <td class="text-end {{ 'text-green' if pos.ann_return >= 0 else 'text-red' }}">{{
+                                        pos.ann_return | pct }}</td>
+                                    <td class="text-end text-warning">{{ pos.ann_volatility | pct }}</td>
+                                    <td class="text-end">{{ '%.2f'|format(pos.sharpe) }}</td>
+                                    <td class="text-end text-red">{{ pos.max_drawdown | pct }}</td>
+                                    <td class="text-end text-red">{{ pos.var_95 | pct }}</td>
+                                    <td class="text-end">{{ '%.2f'|format(pos.beta) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
+            {% endfor %}
         </div>
-
-        <!-- Individual Position Risk -->
-        <div class="card p-4 mb-4">
-            <h5 data-i18n="indiv_pos_risk" class="mb-3">Individual Position Risk</h5>
-            <div class="table-responsive">
-                <table class="table table-hover table-borderless align-middle sortable">
-                    <thead>
-                        <tr>
-                            <th data-i18n="ticker" class="cursor-pointer">Ticker <i
-                                    class="fas fa-sort text-muted ms-1"></i></th>
-                            <th class="text-end cursor-pointer metric-label" data-i18n="ann_return"
-                                data-i18n-title="tt_ann_return">Ann. Return <i class="fas fa-sort text-muted ms-1"></i>
-                            </th>
-                            <th class="text-end cursor-pointer metric-label" data-i18n="ann_volatility"
-                                data-i18n-title="tt_ann_volatility">Ann. Vol <i class="fas fa-sort text-muted ms-1"></i>
-                            </th>
-                            <th class="text-end cursor-pointer metric-label" data-i18n="sharpe"
-                                data-i18n-title="tt_sharpe">Sharpe <i class="fas fa-sort text-muted ms-1"></i></th>
-                            <th class="text-end cursor-pointer metric-label" data-i18n="max_dd"
-                                data-i18n-title="tt_max_dd">Max DD <i class="fas fa-sort text-muted ms-1"></i></th>
-                            <th class="text-end cursor-pointer metric-label" data-i18n="var_95"
-                                data-i18n-title="tt_var_95">VaR 95% <i class="fas fa-sort text-muted ms-1"></i></th>
-                            <th class="text-end cursor-pointer metric-label" data-i18n="beta"
-                                data-i18n-title="tt_beta_port">Beta <i class="fas fa-sort text-muted ms-1"></i></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for pos in data.positions %}
-                        <tr>
-                            <td><strong>{{ pos.ticker }}</strong></td>
-                            <td class="text-end {{ 'text-green' if pos.ann_return >= 0 else 'text-red' }}">{{
-                                pos.ann_return | pct }}</td>
-                            <td class="text-end text-warning">{{ pos.ann_volatility | pct }}</td>
-                            <td class="text-end">{{ '%.2f'|format(pos.sharpe) }}</td>
-                            <td class="text-end text-red">{{ pos.max_drawdown | pct }}</td>
-                            <td class="text-end text-red">{{ pos.var_95 | pct }}</td>
-                            <td class="text-end">{{ '%.2f'|format(pos.beta) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
     </div>
 </div>
 {% endblock %}
@@ -204,6 +249,7 @@
             est_pnl: "Est. P&L (USD)",
             est_pnl_ntd: "Est. P&L (NTD)",
             ticker: "Ticker",
+            name: "Name",
             // Tooltip Explanations
             tt_ann_return: "Average annualized return calculated from daily historical data.",
             tt_ann_volatility: "Overall statistical dispersion (risk) of returns, annualized.",
@@ -247,6 +293,7 @@
             est_pnl: "預估損益 (USD)",
             est_pnl_ntd: "預估損益 (NTD)",
             ticker: "代號",
+            name: "名稱",
             // Tooltip Explanations
             tt_ann_return: "根據歷史資料所計算的平均年化報酬率。",
             tt_ann_volatility: "根據每日報酬率計算的整體年化波動度（風險測度）。",

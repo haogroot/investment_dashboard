@@ -625,3 +625,260 @@ def calculate_goal_tracking(total_asset_twd, goal_config):
         'financial_freedom': financial_freedom,
         'projection': projection,
     }
+import numpy as np
+import pandas as pd
+
+def calculate_member_risk_metrics(positions, market_data, current_nav_unified):
+    """
+    Simulates portfolio risk metrics based on current holdings.
+    Args:
+        positions: list of unified position dicts
+        market_data: pd.DataFrame of historical prices for all tickers
+        current_nav_unified: Total NAV of this member in unified currency
+    """
+    
+    # 1. Sector Exposure
+    sector_exposure = {}
+    stock_value = 0
+    bond_value = 0
+    other_value = 0
+    
+    # 2. Risk Metrics Setup
+    active_tickers = []
+    weights = []
+    
+    for pos in positions:
+        sec = pos.get('sector', 'Unknown')
+        mv = pos.get('market_value_unified', pos.get('market_value', 0))
+        sector_exposure[sec] = sector_exposure.get(sec, 0) + mv
+        
+        t = pos.get('yf_ticker', pos['ticker'])
+        p_type = pos.get('type', 'EQUITY')
+        name = pos.get('name', '')
+        
+        is_bond = False
+        t_upper = t.upper()
+        if t_upper in ['BND', 'TLT', 'AGG', 'IEF', 'SHY', 'IEI', 'TLH', 'GOVT', 'VGIT', 'VCIT', 'VCSH', 'BNDX']:
+            is_bond = True
+        elif isinstance(name, str) and 'bond' in name.lower():
+            is_bond = True
+        elif isinstance(sec, str) and 'bond' in sec.lower():
+            is_bond = True
+            
+        if is_bond:
+            bond_value += mv
+        elif p_type in ['EQUITY', 'ETF']:
+            stock_value += mv
+        else:
+            other_value += mv
+            
+        if t in market_data.columns and mv > 0:
+            active_tickers.append(t)
+            weights.append(mv)
+            
+    sectors_list = [{'sector': k, 'value': v, 'weight': v/current_nav_unified if current_nav_unified > 0 else 0} for k,v in sector_exposure.items()]
+    sectors_list.sort(key=lambda x: x['value'], reverse=True)
+    
+    # Normalize weights for the simulated portfolio
+    total_w = sum(weights)
+    if total_w > 0:
+        norm_weights = np.array(weights) / total_w
+    else:
+        norm_weights = np.array([])
+        
+    # 3. Correlation Matrix
+    correlation_data = []
+    if len(active_tickers) > 1:
+        recent_market = market_data[active_tickers].iloc[-252:]
+        corr_matrix = recent_market.pct_change().corr().fillna(0)
+        
+        for t1 in active_tickers:
+            row_data = {'ticker': t1, 'corr_cells': []}
+            for t2 in active_tickers:
+                val = corr_matrix.loc[t1, t2] if (t1 in corr_matrix.index and t2 in corr_matrix.columns) else 0
+                row_data['corr_cells'].append({'target': t2, 'val': val})
+            correlation_data.append(row_data)
+
+    # 4. Stress Test and Beta
+    stress_results = []
+    scenarios = [
+        ('Crash', -0.50), ('Severe Bear', -0.40), ('Bear', -0.30),
+        ('Correction', -0.20), ('Pullback', -0.10), ('Flat', 0.0),
+        ('Rally', 0.10), ('Strong Rally', 0.20), ('Bull', 0.30),
+        ('Euphoria', 0.40), ('Bubble', 0.50)
+    ]
+    
+    if 'SP500' in market_data.columns:
+        benchmark = market_data['SP500'].pct_change().fillna(0)
+    elif '^GSPC' in market_data.columns:
+        benchmark = market_data['^GSPC'].pct_change().fillna(0)
+    else:
+        benchmark = None
+
+    for sc_name, chg in scenarios:
+        unhedged_pnl = 0
+        hedged_pnl = 0
+        
+        for pos in positions:
+            t = pos.get('yf_ticker', pos['ticker'])
+            p_type = pos.get('type', 'EQUITY')
+            base_mv = pos.get('market_value_unified', pos.get('market_value', 0))
+            shares = pos.get('shares', 0)
+            
+            if p_type in ['EQUITY', 'ETF']:
+                beta_to_use = pos.get('beta', 1.0)
+                if beta_to_use is None or np.isnan(beta_to_use): beta_to_use = 1.0
+                asset_chg = chg * beta_to_use
+                est_pnl = base_mv * asset_chg
+                unhedged_pnl += est_pnl
+                hedged_pnl += est_pnl
+            elif p_type == 'OPTION':
+                # Simplified hedging for members without explicit options or cross-currency handling
+                # Option hedging logic here
+                beta_to_use = pos.get('beta', 0.0)
+                if beta_to_use is None or np.isnan(beta_to_use): beta_to_use = 0.0
+                opt_pnl = base_mv * (chg * beta_to_use)
+                hedged_pnl += opt_pnl
+                
+        stress_results.append({
+            'scenario': sc_name,
+            'market_change': chg,
+            'unhedged_pnl': unhedged_pnl,
+            'hedged_pnl': hedged_pnl,
+            'unhedged_change': unhedged_pnl / current_nav_unified if current_nav_unified > 0 else 0,
+            'hedged_change': hedged_pnl / current_nav_unified if current_nav_unified > 0 else 0,
+            'hedging_benefit': hedged_pnl - unhedged_pnl,
+            'est_nav': current_nav_unified + hedged_pnl
+        })
+
+    # 5. Advanced Risk Metrics using static current weights
+    ann_return = 0
+    ann_volatility = 0
+    sortino = 0
+    calmar = 0
+    var_95 = 0
+    var_99 = 0
+    cvar_95 = 0
+    skewness = 0
+    kurtosis = 0
+    port_beta = 1.0
+    max_dd = 0
+    sharpe = 0
+    rf_rate = 0.043
+    
+    if len(active_tickers) > 0 and not market_data[active_tickers].empty:
+        # Fill missing daily prices (e.g. TW vs US holidays) before calculating returns to avoid dropping the entire row
+        filled_market = market_data[active_tickers].ffill()
+        daily_rets = filled_market.pct_change().dropna(how='all').fillna(0)
+        
+        # Simulated portfolio daily returns
+        sim_port_rets = (daily_rets * norm_weights).sum(axis=1)
+        
+        if len(sim_port_rets) > 1:
+            ann_return = sim_port_rets.mean() * 252
+            ann_volatility = sim_port_rets.std() * np.sqrt(252)
+            
+            downside_rets = sim_port_rets[sim_port_rets < 0]
+            downside_std = downside_rets.std() * np.sqrt(252)
+            if downside_std > 0:
+                sortino = (ann_return - rf_rate) / downside_std
+                
+            sim_nav = (1 + sim_port_rets).cumprod()
+            roll_max = sim_nav.cummax()
+            dd = (sim_nav - roll_max) / roll_max
+            max_dd = dd.min()
+            
+            if max_dd < 0:
+                calmar = ann_return / abs(max_dd)
+                
+            var_95 = np.percentile(sim_port_rets, 5)
+            var_99 = np.percentile(sim_port_rets, 1)
+            cvar_95 = sim_port_rets[sim_port_rets <= var_95].mean()
+            
+            skewness = sim_port_rets.skew()
+            kurtosis = sim_port_rets.kurtosis()
+            
+            if sim_port_rets.std() > 0:
+                sharpe = (sim_port_rets.mean() * 252 - rf_rate) / (sim_port_rets.std() * np.sqrt(252))
+                
+            if benchmark is not None:
+                aligned = pd.concat([sim_port_rets, benchmark], axis=1, join='inner').dropna()
+                if not aligned.empty:
+                    cov = np.cov(aligned.iloc[:, 0], aligned.iloc[:, 1])[0][1]
+                    var = np.var(aligned.iloc[:, 1])
+                    port_beta = cov / var if var > 0 else 1.0
+
+    # Calculate per-position risk metrics (same logic as before)
+    unified_positions = []
+    for pos in positions:
+        pos_out = pos.copy()
+        t = pos.get('yf_ticker', pos['ticker'])
+        if t in market_data.columns:
+            prices = market_data[t].dropna()
+            if len(prices) > 1:
+                p_rets = prices.pct_change().dropna()
+                pos_out['ann_return'] = p_rets.mean() * 252
+                pos_out['ann_volatility'] = p_rets.std() * np.sqrt(252)
+                p_sharpe = 0
+                if p_rets.std() > 0:
+                    p_sharpe = (p_rets.mean() * 252 - rf_rate) / (p_rets.std() * np.sqrt(252))
+                pos_out['sharpe'] = p_sharpe
+                
+                roll_max = prices.cummax()
+                dd = (prices - roll_max) / roll_max
+                pos_out['max_drawdown'] = dd.min()
+                pos_out['var_95'] = np.percentile(p_rets, 5) if not p_rets.empty else 0
+                
+                # Beta
+                if benchmark is not None and not benchmark.empty:
+                    aligned = pd.concat([p_rets, benchmark], axis=1, join='inner').dropna()
+                    if not aligned.empty:
+                        cov = np.cov(aligned.iloc[:, 0], aligned.iloc[:, 1])[0][1]
+                        var = np.var(aligned.iloc[:, 1])
+                        pos_out['beta'] = cov / var if var > 0 else 1.0
+                    else:
+                        pos_out['beta'] = 1.0
+                else:
+                    pos_out['beta'] = 1.0
+            else:
+                pos_out['ann_return'] = 0
+                pos_out['ann_volatility'] = 0
+                pos_out['sharpe'] = 0
+                pos_out['max_drawdown'] = 0
+                pos_out['var_95'] = 0
+                if pos_out.get('beta') is None or np.isnan(pos_out.get('beta')): pos_out['beta'] = 1.0
+        else:
+            pos_out['ann_return'] = 0
+            pos_out['ann_volatility'] = 0
+            pos_out['sharpe'] = 0
+            pos_out['max_drawdown'] = 0
+            pos_out['var_95'] = 0
+            if pos_out.get('beta') is None or np.isnan(pos_out.get('beta')): pos_out['beta'] = 1.0
+            
+        unified_positions.append(pos_out)
+
+    return {
+        'dashboard': {
+            'nav': current_nav_unified, # Use this as the total value in template (already in unified currency)
+            'nav_twd': current_nav_unified, # Keep naming consistent
+            'stock_value': stock_value,
+            'bond_value': bond_value,
+            'other_value': other_value,
+            'ann_return': ann_return,
+            'ann_volatility': ann_volatility,
+            'sharpe': sharpe,
+            'sortino': sortino,
+            'calmar': calmar,
+            'max_drawdown': max_dd,
+            'var_95': var_95,
+            'var_99': var_99,
+            'cvar_95': cvar_95,
+            'skewness': skewness,
+            'kurtosis': kurtosis,
+            'beta': port_beta
+        },
+        'positions': unified_positions,
+        'sectors': sectors_list,
+        'correlation': correlation_data,
+        'stress_test': stress_results
+    }

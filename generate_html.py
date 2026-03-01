@@ -130,6 +130,7 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
             
             tw_files_to_process = utils.get_latest_tw_files(source_dir_path)
             
+            tw_prices_list = []
             for f in tw_files_to_process:
                 owner = f.name.split('_')[0] if '_' in f.name else 'Unknown'
                 print(f"Processing {f.name} for owner {owner}...")
@@ -141,6 +142,8 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
                     tw_summary['total_pnl'] += data['tw_summary'].get('total_pnl', 0)
                     tw_summary['stock_count'] += data['tw_summary'].get('stock_count', 0)
                     tw_summary['etf_count'] += data['tw_summary'].get('etf_count', 0)
+                    if 'tw_prices' in data and data['tw_prices'] is not None and not data['tw_prices'].empty:
+                        tw_prices_list.append(data['tw_prices'])
             
             if all_tw_positions:
                 all_tw_positions.sort(key=lambda x: x['market_value'], reverse=True)
@@ -153,6 +156,12 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
                     'tw_positions': all_tw_positions,
                     'tw_summary': tw_summary
                 }
+                if tw_prices_list:
+                    import pandas as pd
+                    combined_tw_prices = pd.concat(tw_prices_list, axis=1)
+                    combined_tw_prices = combined_tw_prices.loc[:, ~combined_tw_prices.columns.duplicated()]
+                    tw_data['tw_prices'] = combined_tw_prices
+                    
                 clean_analytics['tw_positions'] = tw_data['tw_positions']
                 clean_analytics['tw_summary'] = tw_data['tw_summary']
                 print(f"Loaded {len(tw_data['tw_positions'])} Taiwan stock positions from {source_dir}")
@@ -179,6 +188,8 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
     for pos in clean_analytics['positions']:
         pos_twd = pos.copy()
         pos_twd['currency'] = 'USD'
+        pos_twd['owner'] = 'Howard' # Default US positions to Howard
+        pos_twd['yf_ticker'] = pos.get('ticker')
         market_value_twd = pos.get('market_value_twd', pos.get('market_value', 0) * us_fx_rate)
         pos_twd['market_value_unified'] = market_value_twd
         
@@ -192,10 +203,16 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
 
     # Add TW positions to raw_all_positions
     if tw_data:
+        if 'tw_prices' in tw_data:
+            # Merge tw_prices into market_data
+            market_data = pd.concat([market_data, tw_data['tw_prices']], axis=1)
+            market_data = market_data.loc[:, ~market_data.columns.duplicated()]
+            
         for pos in tw_data['tw_positions']:
             pos_twd = pos.copy()
             pos_twd['currency'] = 'TWD'
             pos_twd['ticker'] = pos.get('ticker_local', pos.get('ticker', ''))
+            pos_twd['yf_ticker'] = f"{pos_twd['ticker']}.TW"
             pos_twd['name'] = pos.get('name_local', pos.get('name', ''))
             
             market_value_twd = pos.get('market_value', 0)
@@ -209,49 +226,55 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
             raw_all_positions.append(pos_twd)
 
     # Aggregate by (currency, ticker)
-    aggregated_positions = {}
-    total_market_value_twd = 0
-    total_pnl_twd = 0
-    total_cost_twd = 0
+    def aggregate_positions(raw_positions):
+        aggregated_positions = {}
+        total_market_value_twd = 0
+        total_pnl_twd = 0
+        total_cost_twd = 0
 
-    for pos in raw_all_positions:
-        key = (pos['currency'], pos['ticker'])
-        if key not in aggregated_positions:
-            aggregated_positions[key] = {
-                'currency': pos['currency'],
-                'ticker': pos['ticker'],
-                'name': pos.get('name', ''),
-                'sector': pos.get('sector', ''),
-                'price': pos.get('price', 0),
-                'beta': pos.get('beta'),
-                'shares': 0,
-                'market_value_unified': 0,
-                'total_cost_unified': 0,
-                'unrealized_pnl_unified': 0
-            }
-        
-        agg_pos = aggregated_positions[key]
-        agg_pos['shares'] += pos.get('shares', 0)
-        agg_pos['market_value_unified'] += pos['market_value_unified']
-        agg_pos['total_cost_unified'] += pos['total_cost_unified']
-        agg_pos['unrealized_pnl_unified'] += pos['unrealized_pnl_unified']
-        
-        if agg_pos['beta'] is None and pos.get('beta') is not None:
-            agg_pos['beta'] = pos.get('beta')
+        for pos in raw_positions:
+            key = (pos['currency'], pos['ticker'])
+            if key not in aggregated_positions:
+                aggregated_positions[key] = {
+                    'currency': pos['currency'],
+                    'ticker': pos['ticker'],
+                    'yf_ticker': pos.get('yf_ticker', pos['ticker']),
+                    'name': pos.get('name', ''),
+                    'sector': pos.get('sector', ''),
+                    'type': pos.get('type', 'EQUITY'),
+                    'price': pos.get('price', 0),
+                    'beta': pos.get('beta'),
+                    'shares': 0,
+                    'market_value_unified': 0,
+                    'total_cost_unified': 0,
+                    'unrealized_pnl_unified': 0,
+                    'owner': pos.get('owner', 'Unknown')
+                }
             
-        total_market_value_twd += pos['market_value_unified']
-        total_pnl_twd += pos['unrealized_pnl_unified']
-        total_cost_twd += pos['total_cost_unified']
+            agg_pos = aggregated_positions[key]
+            agg_pos['shares'] += pos.get('shares', 0)
+            agg_pos['market_value_unified'] += pos['market_value_unified']
+            agg_pos['total_cost_unified'] += pos['total_cost_unified']
+            agg_pos['unrealized_pnl_unified'] += pos['unrealized_pnl_unified']
+            
+            if agg_pos['beta'] is None and pos.get('beta') is not None:
+                agg_pos['beta'] = pos.get('beta')
+                
+            total_market_value_twd += pos['market_value_unified']
+            total_pnl_twd += pos['unrealized_pnl_unified']
+            total_cost_twd += pos['total_cost_unified']
 
-    all_positions = list(aggregated_positions.values())
+        all_pos = list(aggregated_positions.values())
+        
+        for p in all_pos:
+            p['pnl_pct'] = p['unrealized_pnl_unified'] / p['total_cost_unified'] if p['total_cost_unified'] > 0 else 0
+            p['weight_unified'] = p['market_value_unified'] / total_market_value_twd if total_market_value_twd > 0 else 0
+
+        all_pos.sort(key=lambda x: x['market_value_unified'], reverse=True)
+        return all_pos, total_market_value_twd, total_pnl_twd, total_cost_twd
+
+    all_positions, total_market_value_twd, total_pnl_twd, total_cost_twd = aggregate_positions(raw_all_positions)
     
-    # Recalculate pnl_pct and weights for combined portfolio
-    for pos in all_positions:
-        pos['pnl_pct'] = pos['unrealized_pnl_unified'] / pos['total_cost_unified'] if pos['total_cost_unified'] > 0 else 0
-        pos['weight_unified'] = pos['market_value_unified'] / total_market_value_twd if total_market_value_twd > 0 else 0
-
-    all_positions.sort(key=lambda x: x['market_value_unified'], reverse=True)
-
     clean_analytics['all_positions'] = all_positions
 
     total_return_pct_unified = total_pnl_twd / total_cost_twd if total_cost_twd > 0 else 0
@@ -262,6 +285,24 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
         'total_return_pct': total_return_pct_unified,
         'position_count': len(all_positions)
     }
+
+    # Calculate Member-level Risk Metrics
+    clean_analytics['member_analytics'] = {}
+    member_buckets = {
+        'All': raw_all_positions,
+        'Howard': [p for p in raw_all_positions if p.get('owner') == 'Howard'],
+        'Debby': [p for p in raw_all_positions if p.get('owner') == 'Debby']
+    }
+    
+    for member, bucket_raw_pos in member_buckets.items():
+        agg_pos, nav, _, _ = aggregate_positions(bucket_raw_pos)
+        # add any extra cash the member has for NAV? (US cash for Howard)
+        if member in ['All', 'Howard']:
+            # approximate adding US cash to NAV
+            us_cash = clean_analytics['dashboard'].get('cash', 0) * clean_analytics['dashboard'].get('fx_rate', 1.0)
+            nav += us_cash
+        m_risk = portfolio_analytics.calculate_member_risk_metrics(agg_pos, market_data, nav)
+        clean_analytics['member_analytics'][member] = m_risk
 
     # Calculate per-user investments (to be used by Property and Goals)
     user_investments = {}

@@ -150,9 +150,9 @@ def load_tw_inventory(csv_path, owner='Unknown'):
     tickers_tw = df['YFTicker'].tolist()
     print(f"[TW] Fetching market data for: {tickers_tw}...")
 
-    # Fetch latest prices
+    # Fetch 1y prices for risk metrics
     try:
-        yf_prices = yf.download(tickers_tw, period='5d', progress=False, threads=True)['Close']
+        yf_prices = yf.download(tickers_tw, period='1y', progress=False, threads=True)['Close']
         if isinstance(yf_prices, pd.Series):
             yf_prices = yf_prices.to_frame()
     except Exception as e:
@@ -279,4 +279,5 @@ def load_tw_inventory(csv_path, owner='Unknown'):
     return {
         'tw_positions': positions,
         'tw_summary': summary,
+        'tw_prices': yf_prices,
     }

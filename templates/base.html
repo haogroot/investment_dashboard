@@ -526,6 +526,21 @@
             updatePrivacy();
         });
 
+        // --- Global Tab Styling ---
+        document.addEventListener('DOMContentLoaded', function () {
+            const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+            tabEls.forEach(tabEl => {
+                tabEl.addEventListener('show.bs.tab', function (event) {
+                    if (event.relatedTarget) {
+                        event.relatedTarget.classList.remove('tab-selected', 'fw-bold', 'border-bottom', 'border-primary', 'border-3', 'text-light');
+                        event.relatedTarget.classList.add('text-muted');
+                    }
+                    event.target.classList.remove('text-muted');
+                    event.target.classList.add('tab-selected', 'fw-bold', 'border-bottom', 'border-primary', 'border-3', 'text-light');
+                });
+            });
+        });
+
         // --- Init ---
         updateLanguage();
         updatePrivacy();
