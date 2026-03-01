@@ -296,12 +296,72 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
     if goal_config_path.exists():
         with open(goal_config_path, 'r', encoding='utf-8') as f:
             goal_config = json.load(f)
-        goal_tracking = portfolio_analytics.calculate_goal_tracking(
-            total_asset_twd=total_market_value_twd,
-            goal_config=goal_config
-        )
-        clean_analytics['goal_tracking'] = goal_tracking
-        print(f"Calculated goal tracking for {len(goal_tracking['goals'])} goals")
+            
+        users_config = goal_config.get('users', {})
+        if not users_config and 'goals' in goal_config:
+            # Fallback to legacy config if still using flat structure
+            users_config = {'Howard': goal_config}
+
+        # 1. Calculate per-user assets
+        user_asset_twd = {}
+        # US stocks -> all Howard's
+        us_fx_rate = clean_analytics.get('dashboard', {}).get('fx_rate', 1.0)
+        us_total_twd = sum(pos.get('market_value_twd', pos.get('market_value', 0) * us_fx_rate) for pos in clean_analytics.get('positions', []))
+        user_asset_twd['Howard'] = us_total_twd
+        
+        # TW stocks -> by owner
+        if tw_data:
+            for pos in tw_data['tw_positions']:
+                owner = pos.get('owner', 'Unknown')
+                user_asset_twd[owner] = user_asset_twd.get(owner, 0) + pos.get('market_value', 0)
+
+        goal_tracking_by_user = {}
+        total_goals_count = 0
+        all_goals = []
+        total_monthly_expense = 0
+        total_swr = 0.04
+        total_expected_return = 0.10
+        user_count = len(users_config) if users_config else 1
+        
+        # Sum FF logic
+        total_monthly_expense = sum(u.get('financial_freedom', {}).get('monthly_expense', 50000) for u in users_config.values())
+        
+        # Calculate 'All' settings
+        if user_count > 0:
+            total_swr = sum(u.get('financial_freedom', {}).get('safe_withdrawal_rate', 0.04) for u in users_config.values()) / user_count
+            total_expected_return = sum(u.get('projection', {}).get('expected_annual_return', 0.10) for u in users_config.values()) / user_count
+        
+        # 2. Process each user's goals
+        for user_name, user_config in users_config.items():
+            asset = user_asset_twd.get(user_name, 0)
+            res = portfolio_analytics.calculate_goal_tracking(asset, user_config)
+            goal_tracking_by_user[user_name] = res
+            
+            # Add to all goals
+            all_goals.extend(user_config.get('goals', []))
+            total_goals_count += len(res.get('goals', []))
+            
+        # 3. Calculate "All" mode goals
+        all_asset = sum(user_asset_twd.values())
+        
+        all_config = {
+            'goals': all_goals,
+            'financial_freedom': {
+                'monthly_expense': total_monthly_expense,
+                'safe_withdrawal_rate': total_swr
+            },
+            'projection': {
+                'expected_annual_return': total_expected_return
+            }
+        }
+        
+        goal_tracking_by_user['All'] = portfolio_analytics.calculate_goal_tracking(all_asset, all_config)
+
+        clean_analytics['goal_tracking_by_user'] = goal_tracking_by_user
+        # Keep backward compat
+        clean_analytics['goal_tracking'] = goal_tracking_by_user.get('Howard', goal_tracking_by_user.get('All'))
+        
+        print(f"Calculated goal tracking for {total_goals_count} goals across users")
     else:
         print("goal_config.json not found, skipping goal tracking")
 

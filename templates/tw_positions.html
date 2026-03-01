@@ -313,7 +313,19 @@
         posEl.innerHTML = `${filteredPos.length} <span class="text-muted small">(<span data-i18n="text_stocks">股票</span> ${stockCount} / ETF ${etfCount})</span>`;
 
         // 4. Update Chart and Legend
-        let chartData = filteredPos.slice().sort((a, b) => b.market_value - a.market_value);
+        const aggregated = {};
+        filteredPos.forEach(p => {
+            if (!aggregated[p.ticker_local]) {
+                aggregated[p.ticker_local] = {
+                    ticker_local: p.ticker_local,
+                    name_local: p.name_local,
+                    market_value: 0
+                };
+            }
+            aggregated[p.ticker_local].market_value += p.market_value;
+        });
+        let chartData = Object.values(aggregated).sort((a, b) => b.market_value - a.market_value);
+
         // Recalculate weights for the current filtered pool
         chartData.forEach(p => {
             p.local_weight = totalValue > 0 ? (p.market_value / totalValue) : 0;

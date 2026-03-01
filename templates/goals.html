@@ -406,288 +406,321 @@
     </div>
 </div>
 
-{% if data.goal_tracking %}
-{% set gt = data.goal_tracking %}
+<!-- Owner Tabs -->
+<ul class="nav nav-tabs mt-4 border-secondary justify-content-center" id="goalOwnerTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button
+            class="nav-link tab-selected fw-bold text-light bg-transparent border-0 border-bottom border-primary border-3"
+            id="tab-howard" data-owner="Howard" type="button" role="tab"
+            style="font-size: 1.1rem; padding: 0.5rem 1.5rem;" data-i18n="tab_howard">Howard</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link text-muted bg-transparent border-0" id="tab-debby" data-owner="Debby" type="button"
+            role="tab" style="font-size: 1.1rem; padding: 0.5rem 1.5rem;" data-i18n="tab_debby">Debby</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link text-muted bg-transparent border-0" id="tab-all" data-owner="All" type="button"
+            role="tab" style="font-size: 1.1rem; padding: 0.5rem 1.5rem;" data-i18n="tab_all">全部成員 (All)</button>
+    </li>
+</ul>
 
-<!-- SMART Goal Tracking Cards -->
-<div class="row fade-in" style="animation-delay: 0.1s;">
-    <div class="col-12">
-        <div class="section-title">
-            <span>🎯</span>
-            <span data-i18n="goal_section_smart">SMART Goals</span>
-        </div>
-        <p class="section-subtitle" data-i18n="goal_section_smart_desc">Set specific, measurable goals with deadlines
-            and track your progress</p>
-    </div>
+{% if data.goal_tracking_by_user %}
+{% for owner, gt in data.goal_tracking_by_user.items() %}
+<div class="goal-owner-container" id="goal-container-{{ owner }}"
+    style="display: {{ 'block' if owner == 'Howard' else 'none' }};">
 
-    {% for goal in gt.goals %}
-    <div class="col-lg-6 mb-4">
-        <div class="goal-card {{ goal.type }}">
-            <div class="goal-header">
-                <div>
-                    <span class="goal-type-badge {{ 'badge-short' if goal.type == 'short_term' else 'badge-long' }}"
-                        data-i18n="goal_type_{{ goal.type }}">
-                        {{ 'Short Term' if goal.type == 'short_term' else 'Long Term' }}
-                    </span>
-                    <div class="goal-title" data-i18n="goal_name_{{ goal.id }}">
-                        {{ goal.name_en }}
-                    </div>
-                    {% if goal.deadline %}
-                    <div class="goal-subtitle">
-                        <i class="fas fa-calendar-alt me-1"></i>
-                        <span data-i18n="goal_deadline">Deadline</span>: {{ goal.deadline_str }}
-                    </div>
-                    {% else %}
-                    <div class="goal-subtitle">
-                        <i class="fas fa-infinity me-1"></i>
-                        <span data-i18n="goal_no_deadline">No Deadline</span>
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="goal-icon">
-                    {{ '📈' if goal.type == 'short_term' else '🏖️' }}
-                </div>
+    <!-- SMART Goal Tracking Cards -->
+    <div class="row fade-in" style="animation-delay: 0.1s;">
+        <div class="col-12">
+            <div class="section-title">
+                <span>🎯</span>
+                <span data-i18n="goal_section_smart">SMART Goals</span>
             </div>
+            <p class="section-subtitle" data-i18n="goal_section_smart_desc">Set specific, measurable goals with
+                deadlines
+                and track your progress</p>
+        </div>
 
-            <div class="goal-progress-container">
-                <div class="goal-progress-header">
-                    <span class="goal-progress-pct">{{ goal.progress_pct | round(1) }}%</span>
-                    {% if goal.on_track is not none %}
-                    <span class="track-badge {{ 'track-on' if goal.on_track else 'track-off' }}">
-                        <i class="fas {{ 'fa-check-circle' if goal.on_track else 'fa-exclamation-triangle' }}"></i>
-                        <span data-i18n="{{ 'goal_on_track' if goal.on_track else 'goal_off_track' }}">
-                            {{ 'On Track' if goal.on_track else 'Behind' }}
+        {% for goal in gt.goals %}
+        <div class="col-lg-6 mb-4">
+            <div class="goal-card {{ goal.type }}">
+                <div class="goal-header">
+                    <div>
+                        <span class="goal-type-badge {{ 'badge-short' if goal.type == 'short_term' else 'badge-long' }}"
+                            data-i18n="goal_type_{{ goal.type }}">
+                            {{ 'Short Term' if goal.type == 'short_term' else 'Long Term' }}
                         </span>
-                    </span>
-                    {% endif %}
-                </div>
-                <div class="goal-progress-bar-bg">
-                    <div class="goal-progress-bar-fill {{ 'blue-purple' if goal.type == 'short_term' else 'amber-red' }}"
-                        style="width: 0%;" data-target-width="{{ goal.progress_pct }}">
-                    </div>
-                </div>
-            </div>
-
-            <div class="goal-stats">
-                <div class="goal-stat-item">
-                    <span class="goal-stat-label" data-i18n="goal_current">Current</span>
-                    <span class="goal-stat-value privacy-sensitive">NT$ {{ goal.current_value | commas }}</span>
-                </div>
-                <div class="goal-stat-item">
-                    <span class="goal-stat-label" data-i18n="goal_target">Target</span>
-                    <span class="goal-stat-value">NT$ {{ goal.target_value | commas }}</span>
-                </div>
-                <div class="goal-stat-item">
-                    <span class="goal-stat-label" data-i18n="goal_gap">Gap</span>
-                    <span class="goal-stat-value privacy-sensitive text-{{ 'green' if goal.gap == 0 else 'red' }}">
-                        NT$ {{ goal.gap | commas }}
-                    </span>
-                </div>
-                {% if goal.days_remaining is not none %}
-                <div class="goal-stat-item">
-                    <span class="goal-stat-label" data-i18n="goal_days_left">Days Left</span>
-                    <span class="goal-stat-value">{{ goal.days_remaining | commas }}</span>
-                </div>
-                {% endif %}
-                {% if goal.est_years is not none %}
-                <div class="goal-stat-item">
-                    <span class="goal-stat-label" data-i18n="goal_est_years">Est. Years</span>
-                    <span class="goal-stat-value">
-                        {% if goal.est_years == 0 %}
-                        ✅ <span data-i18n="goal_achieved">Achieved</span>
+                        <div class="goal-title" data-i18n="goal_name_{{ goal.id }}">
+                            {{ goal.name_en }}
+                        </div>
+                        {% if goal.deadline %}
+                        <div class="goal-subtitle">
+                            <i class="fas fa-calendar-alt me-1"></i>
+                            <span data-i18n="goal_deadline">Deadline</span>: {{ goal.deadline_str }}
+                        </div>
                         {% else %}
-                        {{ goal.est_years }} <span data-i18n="goal_years">yrs</span>
+                        <div class="goal-subtitle">
+                            <i class="fas fa-infinity me-1"></i>
+                            <span data-i18n="goal_no_deadline">No Deadline</span>
+                        </div>
                         {% endif %}
-                    </span>
-                </div>
-                {% endif %}
-                {% if goal.est_date and goal.est_date != 'Achieved' %}
-                <div class="goal-stat-item">
-                    <span class="goal-stat-label" data-i18n="goal_est_date">Est. Date</span>
-                    <span class="goal-stat-value">{{ goal.est_date }}</span>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    {% endfor %}
-</div>
-
-<!-- Financial Freedom Progress -->
-<div class="row fade-in" style="animation-delay: 0.2s;">
-    <div class="col-12">
-        <div class="section-title">
-            <span>🛡️</span>
-            <span data-i18n="goal_section_ff">Financial Freedom</span>
-        </div>
-        <p class="section-subtitle" data-i18n="goal_section_ff_desc">Passive income coverage based on the 4% safe
-            withdrawal rule</p>
-    </div>
-
-    <div class="col-12">
-        <div class="ff-section">
-            <div class="row align-items-center">
-                <div class="col-md-5">
-                    <div class="ff-gauge-container">
-                        <div class="ff-gauge-wrapper">
-                            <canvas id="ffGaugeChart"></canvas>
-                            <div class="ff-gauge-text">
-                                <div class="ff-gauge-pct">{{ gt.financial_freedom.coverage_pct | round(1) }}%
-                                </div>
-                                <div class="ff-gauge-label" data-i18n="goal_ff_coverage">Coverage</div>
-                            </div>
-                        </div>
                     </div>
-                </div>
-                <div class="col-md-7">
-                    <h5 class="mb-3" data-i18n="goal_ff_passive_income_title">Passive Income vs Expenses</h5>
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="flex-grow-1">
-                            <div class="d-flex justify-content-between mb-1">
-                                <small class="text-muted" data-i18n="goal_ff_passive_income">Annual Passive Income
-                                    (est.)</small>
-                                <small class="fw-bold privacy-sensitive">NT$ {{ gt.financial_freedom.passive_income |
-                                    commas }}</small>
-                            </div>
-                            <div class="progress"
-                                style="height: 8px; border-radius: 4px; background: rgba(255,255,255,0.06);">
-                                <div class="progress-bar"
-                                    style="width: {{ gt.financial_freedom.coverage_pct }}%; background: linear-gradient(90deg, #10b981, #06b6d4); border-radius: 4px;">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                            <div class="d-flex justify-content-between mb-1">
-                                <small class="text-muted" data-i18n="goal_ff_annual_expense">Annual Expenses</small>
-                                <small class="fw-bold">NT$ {{ gt.financial_freedom.annual_expense | commas }}</small>
-                            </div>
-                            <div class="progress"
-                                style="height: 8px; border-radius: 4px; background: rgba(255,255,255,0.06);">
-                                <div class="progress-bar"
-                                    style="width: 100%; background: rgba(255,255,255,0.15); border-radius: 4px;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="ff-details">
-                <div class="ff-detail-card">
-                    <div class="ff-detail-icon">💰</div>
-                    <div class="ff-detail-label" data-i18n="goal_ff_current_assets">Total Assets (TWD)</div>
-                    <div class="ff-detail-value privacy-sensitive">NT$ {{ gt.financial_freedom.current_asset | commas }}
-                    </div>
-                </div>
-                <div class="ff-detail-card">
-                    <div class="ff-detail-icon">📊</div>
-                    <div class="ff-detail-label" data-i18n="goal_ff_monthly_passive">Monthly Passive Income</div>
-                    <div class="ff-detail-value privacy-sensitive">NT$ {{ gt.financial_freedom.passive_income_monthly |
-                        commas }}</div>
-                </div>
-                <div class="ff-detail-card">
-                    <div class="ff-detail-icon">🏦</div>
-                    <div class="ff-detail-label" data-i18n="goal_ff_required_capital">Required Capital (4% Rule)</div>
-                    <div class="ff-detail-value">NT$ {{ gt.financial_freedom.required_capital | commas }}</div>
-                </div>
-                <div class="ff-detail-card">
-                    <div class="ff-detail-icon">📉</div>
-                    <div class="ff-detail-label" data-i18n="goal_ff_capital_gap">Capital Gap</div>
-                    <div
-                        class="ff-detail-value privacy-sensitive text-{{ 'green' if gt.financial_freedom.capital_gap == 0 else 'red' }}">
-                        NT$ {{ gt.financial_freedom.capital_gap | commas }}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Gap & Projection Analysis -->
-<div class="row fade-in" style="animation-delay: 0.3s;">
-    <div class="col-12">
-        <div class="section-title">
-            <span>🔮</span>
-            <span data-i18n="goal_section_gap">Gap & Projection Analysis</span>
-        </div>
-        <p class="section-subtitle" data-i18n="goal_section_gap_desc">Estimated timeline to reach your goals based on
-            expected returns</p>
-    </div>
-
-    <div class="col-12">
-        <div class="gap-section">
-            <div class="gap-timeline">
-                {% for goal in gt.goals %}
-                {% if goal.est_years is not none and goal.est_years > 0 %}
-                <div class="d-flex align-items-center mb-3 p-3"
-                    style="background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                    <div class="me-3" style="font-size: 1.5rem;">
+                    <div class="goal-icon">
                         {{ '📈' if goal.type == 'short_term' else '🏖️' }}
                     </div>
-                    <div class="flex-grow-1">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="fw-bold" data-i18n="goal_name_{{ goal.id }}">{{ goal.name_en }}</div>
-                                <small class="text-muted">
-                                    <span data-i18n="goal_need">Need</span>
-                                    <span class="privacy-sensitive">NT$ {{ goal.gap | commas }}</span>
-                                    <span data-i18n="goal_more">more</span>
-                                </small>
-                            </div>
-                            <div class="text-end">
-                                <div class="fw-bold" style="font-size: 1.1rem;">
-                                    ~{{ goal.est_years }} <span data-i18n="goal_years">yrs</span>
-                                </div>
-                                <small class="text-muted">
-                                    <span data-i18n="goal_est_arrive">Est.</span> {{ goal.est_date }}
-                                </small>
-                            </div>
-                        </div>
-                        <div class="progress mt-2"
-                            style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06);">
-                            <div class="progress-bar"
-                                style="width: {{ goal.progress_pct }}%; background: linear-gradient(90deg, #a855f7, #ec4899); border-radius: 3px;">
-                            </div>
-                        </div>
-                    </div>
                 </div>
-                {% elif goal.est_years == 0 %}
-                <div class="d-flex align-items-center mb-3 p-3"
-                    style="background: rgba(16,185,129,0.08); border-radius: 12px; border: 1px solid rgba(16,185,129,0.2);">
-                    <div class="me-3" style="font-size: 1.5rem;">✅</div>
-                    <div class="flex-grow-1">
-                        <div class="fw-bold text-green" data-i18n="goal_name_{{ goal.id }}">{{ goal.name_en }}</div>
-                        <small class="text-green" data-i18n="goal_achieved_msg">Goal achieved! Congratulations!</small>
-                    </div>
-                </div>
-                {% endif %}
-                {% endfor %}
-            </div>
 
-            <div class="gap-projection-grid">
-                <div class="gap-proj-card">
-                    <div class="gap-proj-label" data-i18n="goal_exp_return">Expected Annual Return</div>
-                    <div class="gap-proj-value">{{ (gt.projection.expected_annual_return * 100) | round(0) | int }}%
+                <div class="goal-progress-container">
+                    <div class="goal-progress-header">
+                        <span class="goal-progress-pct">{{ goal.progress_pct | round(1) }}%</span>
+                        {% if goal.on_track is not none %}
+                        <span class="track-badge {{ 'track-on' if goal.on_track else 'track-off' }}">
+                            <i class="fas {{ 'fa-check-circle' if goal.on_track else 'fa-exclamation-triangle' }}"></i>
+                            <span data-i18n="{{ 'goal_on_track' if goal.on_track else 'goal_off_track' }}">
+                                {{ 'On Track' if goal.on_track else 'Behind' }}
+                            </span>
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="goal-progress-bar-bg">
+                        <div class="goal-progress-bar-fill {{ 'blue-purple' if goal.type == 'short_term' else 'amber-red' }}"
+                            style="width: 0%;" data-target-width="{{ goal.progress_pct }}">
+                        </div>
                     </div>
                 </div>
-                <div class="gap-proj-card">
-                    <div class="gap-proj-label" data-i18n="goal_swr_label">Safe Withdrawal Rate</div>
-                    <div class="gap-proj-value">{{ (gt.financial_freedom.safe_withdrawal_rate * 100) | round(0) | int
-                        }}%</div>
+
+                <div class="goal-stats">
+                    <div class="goal-stat-item">
+                        <span class="goal-stat-label" data-i18n="goal_current">Current</span>
+                        <span class="goal-stat-value privacy-sensitive">NT$ {{ goal.current_value | commas }}</span>
+                    </div>
+                    <div class="goal-stat-item">
+                        <span class="goal-stat-label" data-i18n="goal_target">Target</span>
+                        <span class="goal-stat-value">NT$ {{ goal.target_value | commas }}</span>
+                    </div>
+                    <div class="goal-stat-item">
+                        <span class="goal-stat-label" data-i18n="goal_gap">Gap</span>
+                        <span class="goal-stat-value privacy-sensitive text-{{ 'green' if goal.gap == 0 else 'red' }}">
+                            NT$ {{ goal.gap | commas }}
+                        </span>
+                    </div>
+                    {% if goal.days_remaining is not none %}
+                    <div class="goal-stat-item">
+                        <span class="goal-stat-label" data-i18n="goal_days_left">Days Left</span>
+                        <span class="goal-stat-value">{{ goal.days_remaining | commas }}</span>
+                    </div>
+                    {% endif %}
+                    {% if goal.est_years is not none %}
+                    <div class="goal-stat-item">
+                        <span class="goal-stat-label" data-i18n="goal_est_years">Est. Years</span>
+                        <span class="goal-stat-value">
+                            {% if goal.est_years == 0 %}
+                            ✅ <span data-i18n="goal_achieved">Achieved</span>
+                            {% else %}
+                            {{ goal.est_years }} <span data-i18n="goal_years">yrs</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    {% endif %}
+                    {% if goal.est_date and goal.est_date != 'Achieved' %}
+                    <div class="goal-stat-item">
+                        <span class="goal-stat-label" data-i18n="goal_est_date">Est. Date</span>
+                        <span class="goal-stat-value">{{ goal.est_date }}</span>
+                    </div>
+                    {% endif %}
                 </div>
-                <div class="gap-proj-card">
-                    <div class="gap-proj-label" data-i18n="goal_monthly_expense_label">Monthly Expense</div>
-                    <div class="gap-proj-value">NT$ {{ gt.financial_freedom.monthly_expense | commas }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Financial Freedom Progress -->
+    <div class="row fade-in" style="animation-delay: 0.2s;">
+        <div class="col-12">
+            <div class="section-title">
+                <span>🛡️</span>
+                <span data-i18n="goal_section_ff">Financial Freedom</span>
+            </div>
+            <p class="section-subtitle" data-i18n="goal_section_ff_desc">Passive income coverage based on the 4% safe
+                withdrawal rule</p>
+        </div>
+
+        <div class="col-12">
+            <div class="ff-section">
+                <div class="row align-items-center">
+                    <div class="col-md-5">
+                        <div class="ff-gauge-container">
+                            <div class="ff-gauge-wrapper">
+                                <canvas id="ffGaugeChart-{{ owner }}"></canvas>
+                                <div class="ff-gauge-text">
+                                    <div class="ff-gauge-pct">{{ gt.financial_freedom.coverage_pct | round(1) }}%
+                                    </div>
+                                    <div class="ff-gauge-label" data-i18n="goal_ff_coverage">Coverage</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-7">
+                        <h5 class="mb-3" data-i18n="goal_ff_passive_income_title">Passive Income vs Expenses</h5>
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small class="text-muted" data-i18n="goal_ff_passive_income">Annual Passive Income
+                                        (est.)</small>
+                                    <small class="fw-bold privacy-sensitive">NT$ {{ gt.financial_freedom.passive_income
+                                        |
+                                        commas }}</small>
+                                </div>
+                                <div class="progress"
+                                    style="height: 8px; border-radius: 4px; background: rgba(255,255,255,0.06);">
+                                    <div class="progress-bar"
+                                        style="width: {{ gt.financial_freedom.coverage_pct }}%; background: linear-gradient(90deg, #10b981, #06b6d4); border-radius: 4px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small class="text-muted" data-i18n="goal_ff_annual_expense">Annual Expenses</small>
+                                    <small class="fw-bold">NT$ {{ gt.financial_freedom.annual_expense | commas
+                                        }}</small>
+                                </div>
+                                <div class="progress"
+                                    style="height: 8px; border-radius: 4px; background: rgba(255,255,255,0.06);">
+                                    <div class="progress-bar"
+                                        style="width: 100%; background: rgba(255,255,255,0.15); border-radius: 4px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="gap-proj-card">
-                    <div class="gap-proj-label" data-i18n="goal_total_goals">Total Goals</div>
-                    <div class="gap-proj-value">{{ gt.goals | length }}</div>
+
+                <div class="ff-details">
+                    <div class="ff-detail-card">
+                        <div class="ff-detail-icon">💰</div>
+                        <div class="ff-detail-label" data-i18n="goal_ff_current_assets">Total Assets (TWD)</div>
+                        <div class="ff-detail-value privacy-sensitive">NT$ {{ gt.financial_freedom.current_asset |
+                            commas }}
+                        </div>
+                    </div>
+                    <div class="ff-detail-card">
+                        <div class="ff-detail-icon">📊</div>
+                        <div class="ff-detail-label" data-i18n="goal_ff_monthly_passive">Monthly Passive Income</div>
+                        <div class="ff-detail-value privacy-sensitive">NT$ {{
+                            gt.financial_freedom.passive_income_monthly |
+                            commas }}</div>
+                    </div>
+                    <div class="ff-detail-card">
+                        <div class="ff-detail-icon">🏦</div>
+                        <div class="ff-detail-label" data-i18n="goal_ff_required_capital">Required Capital (4% Rule)
+                        </div>
+                        <div class="ff-detail-value">NT$ {{ gt.financial_freedom.required_capital | commas }}</div>
+                    </div>
+                    <div class="ff-detail-card">
+                        <div class="ff-detail-icon">📉</div>
+                        <div class="ff-detail-label" data-i18n="goal_ff_capital_gap">Capital Gap</div>
+                        <div
+                            class="ff-detail-value privacy-sensitive text-{{ 'green' if gt.financial_freedom.capital_gap == 0 else 'red' }}">
+                            NT$ {{ gt.financial_freedom.capital_gap | commas }}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Gap & Projection Analysis -->
+    <div class="row fade-in" style="animation-delay: 0.3s;">
+        <div class="col-12">
+            <div class="section-title">
+                <span>🔮</span>
+                <span data-i18n="goal_section_gap">Gap & Projection Analysis</span>
+            </div>
+            <p class="section-subtitle" data-i18n="goal_section_gap_desc">Estimated timeline to reach your goals based
+                on
+                expected returns</p>
+        </div>
+
+        <div class="col-12">
+            <div class="gap-section">
+                <div class="gap-timeline">
+                    {% for goal in gt.goals %}
+                    {% if goal.est_years is not none and goal.est_years > 0 %}
+                    <div class="d-flex align-items-center mb-3 p-3"
+                        style="background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                        <div class="me-3" style="font-size: 1.5rem;">
+                            {{ '📈' if goal.type == 'short_term' else '🏖️' }}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="fw-bold" data-i18n="goal_name_{{ goal.id }}">{{ goal.name_en }}</div>
+                                    <small class="text-muted">
+                                        <span data-i18n="goal_need">Need</span>
+                                        <span class="privacy-sensitive">NT$ {{ goal.gap | commas }}</span>
+                                        <span data-i18n="goal_more">more</span>
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold" style="font-size: 1.1rem;">
+                                        ~{{ goal.est_years }} <span data-i18n="goal_years">yrs</span>
+                                    </div>
+                                    <small class="text-muted">
+                                        <span data-i18n="goal_est_arrive">Est.</span> {{ goal.est_date }}
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="progress mt-2"
+                                style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06);">
+                                <div class="progress-bar"
+                                    style="width: {{ goal.progress_pct }}%; background: linear-gradient(90deg, #a855f7, #ec4899); border-radius: 3px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% elif goal.est_years == 0 %}
+                    <div class="d-flex align-items-center mb-3 p-3"
+                        style="background: rgba(16,185,129,0.08); border-radius: 12px; border: 1px solid rgba(16,185,129,0.2);">
+                        <div class="me-3" style="font-size: 1.5rem;">✅</div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold text-green" data-i18n="goal_name_{{ goal.id }}">{{ goal.name_en }}</div>
+                            <small class="text-green" data-i18n="goal_achieved_msg">Goal achieved!
+                                Congratulations!</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+
+                <div class="gap-projection-grid">
+                    <div class="gap-proj-card">
+                        <div class="gap-proj-label" data-i18n="goal_exp_return">Expected Annual Return</div>
+                        <div class="gap-proj-value">{{ (gt.projection.expected_annual_return * 100) | round(0) | int }}%
+                        </div>
+                    </div>
+                    <div class="gap-proj-card">
+                        <div class="gap-proj-label" data-i18n="goal_swr_label">Safe Withdrawal Rate</div>
+                        <div class="gap-proj-value">{{ (gt.financial_freedom.safe_withdrawal_rate * 100) | round(0) |
+                            int
+                            }}%</div>
+                    </div>
+                    <div class="gap-proj-card">
+                        <div class="gap-proj-label" data-i18n="goal_monthly_expense_label">Monthly Expense</div>
+                        <div class="gap-proj-value">NT$ {{ gt.financial_freedom.monthly_expense | commas }}</div>
+                    </div>
+                    <div class="gap-proj-card">
+                        <div class="gap-proj-label" data-i18n="goal_total_goals">Total Goals</div>
+                        <div class="gap-proj-value">{{ gt.goals | length }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
+{% endfor %}
 
 {% else %}
 <div class="row">
@@ -713,46 +746,71 @@
             });
         }, 300);
 
-        // Financial Freedom Gauge Chart (Doughnut)
-        const gaugeCanvas = document.getElementById('ffGaugeChart');
-        if (gaugeCanvas) {
-            const coveragePct = {{ (data.goal_tracking.financial_freedom.coverage_pct if data.goal_tracking else 0) | tojson }};
-    const remaining = Math.max(0, 100 - coveragePct);
+        // Tab Switching Logic
+        const tabs = document.querySelectorAll('#goalOwnerTabs .nav-link');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function (e) {
+                e.preventDefault();
+                // Reset styling
+                tabs.forEach(t => {
+                    t.classList.remove('tab-selected', 'fw-bold', 'border-bottom', 'border-primary', 'border-3');
+                    t.classList.add('text-muted');
+                });
+                // Set active
+                this.classList.add('tab-selected', 'fw-bold', 'border-bottom', 'border-primary', 'border-3');
+                this.classList.remove('text-muted');
 
-    const ctx = gaugeCanvas.getContext('2d');
+                const selectedOwner = this.getAttribute('data-owner');
+                
+                // Hide all, show selected
+                document.querySelectorAll('.goal-owner-container').forEach(container => {
+                    container.style.display = 'none';
+                });
+                const activeContainer = document.getElementById('goal-container-' + selectedOwner);
+                if (activeContainer) {
+                    activeContainer.style.display = 'block';
+                }
+            });
+        });
 
-    // Create gradient
-    const gradient = ctx.createLinearGradient(0, 0, 220, 220);
-    gradient.addColorStop(0, '#10b981');
-    gradient.addColorStop(1, '#06b6d4');
+        // Initialize multiple charts
+        const owners = {{ data.goal_tracking_by_user.keys() | list | tojson | safe }};
+        const goalData = {{ data.goal_tracking_by_user | tojson | safe }};
+        
+        owners.forEach(owner => {
+            const gaugeCanvas = document.getElementById('ffGaugeChart-' + owner);
+            if (gaugeCanvas) {
+                const gt = goalData[owner];
+                const coveragePct = gt && gt.financial_freedom ? gt.financial_freedom.coverage_pct : 0;
+                const remaining = Math.max(0, 100 - coveragePct);
 
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            datasets: [{
-                data: [coveragePct, remaining],
-                backgroundColor: [gradient, 'rgba(255, 255, 255, 0.04)'],
-                borderWidth: 0,
-                borderRadius: 6,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            cutout: '78%',
-            rotation: -90,
-            circumference: 360,
-            plugins: {
-                legend: { display: false },
-                tooltip: { enabled: false }
-            },
-            animation: {
-                duration: 1500,
-                easing: 'easeInOutQuart'
+                const ctx = gaugeCanvas.getContext('2d');
+                const gradient = ctx.createLinearGradient(0, 0, 220, 220);
+                gradient.addColorStop(0, '#10b981');
+                gradient.addColorStop(1, '#06b6d4');
+
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        datasets: [{
+                            data: [coveragePct, remaining],
+                            backgroundColor: [gradient, 'rgba(255, 255, 255, 0.04)'],
+                            borderWidth: 0,
+                            borderRadius: 6,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        cutout: '78%',
+                        rotation: -90,
+                        circumference: 360,
+                        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                        animation: { duration: 1500, easing: 'easeInOutQuart' }
+                    }
+                });
             }
-        }
-    });
-        }
+        });
     });
 </script>
 {% endblock %}
