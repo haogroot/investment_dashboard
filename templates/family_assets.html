@@ -77,7 +77,8 @@ for a given summary / property / label
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="flex-shrink-0 bg-info bg-opacity-10 text-info rounded p-2 me-3">
-                                                <i class="fas fa-tint fa-fw"></i></div>
+                                                <i class="fas fa-tint fa-fw"></i>
+                                            </div>
                                             <div>
                                                 <h6 class="mb-0 fw-semibold" data-i18n="family_liquid_funds">Liquid
                                                     Funds</h6>
@@ -107,7 +108,8 @@ for a given summary / property / label
                                         <div class="d-flex align-items-center">
                                             <div
                                                 class="flex-shrink-0 bg-success bg-opacity-10 text-success rounded p-2 me-3">
-                                                <i class="fas fa-chart-pie fa-fw"></i></div>
+                                                <i class="fas fa-chart-pie fa-fw"></i>
+                                            </div>
                                             <div>
                                                 <h6 class="mb-0 fw-semibold" data-i18n="family_investments">Investment
                                                     Assets</h6>
@@ -138,7 +140,8 @@ for a given summary / property / label
                                         <div class="d-flex align-items-center">
                                             <div
                                                 class="flex-shrink-0 bg-warning bg-opacity-10 text-warning rounded p-2 me-3">
-                                                <i class="fas fa-home fa-fw"></i></div>
+                                                <i class="fas fa-home fa-fw"></i>
+                                            </div>
                                             <div>
                                                 <h6 class="mb-0 fw-semibold" data-i18n="family_real_estate">Real Estate
                                                 </h6>
@@ -169,7 +172,8 @@ for a given summary / property / label
                                         <div class="d-flex align-items-center">
                                             <div
                                                 class="flex-shrink-0 bg-danger bg-opacity-10 text-danger rounded p-2 me-3">
-                                                <i class="fas fa-hand-holding-usd fa-fw"></i></div>
+                                                <i class="fas fa-hand-holding-usd fa-fw"></i>
+                                            </div>
                                             <div>
                                                 <h6 class="mb-0 fw-semibold" data-i18n="family_liabilities">Liabilities
                                                 </h6>
@@ -256,7 +260,7 @@ for a given summary / property / label
 {# ═══ Render Individual Panels ═══ #}
 {% if data.family_members %}
 {% for member in data.family_members %}
-{{ render_panel(member.summary, member.property, member.name, show_investments=false) }}
+{{ render_panel(member.summary, member.property, member.name, show_investments=true) }}
 {% endfor %}
 {% endif %}
 
@@ -280,36 +284,36 @@ for a given summary / property / label
                 amount: '{{ data.family_summary.total_couple_assets_twd | commas }}'
             },
             {% for member in data.family_members %}
-            '{{ member.name }}': {
-                title_en: '{{ member.name }}\'s Assets',
+        '{{ member.name }}': {
+            title_en: '{{ member.name }}\'s Assets',
                 title_zh: '{{ member.name }} 的資產',
-                amount: '{{ member.summary.total_assets_twd | commas }}'
-            },
-            {% endfor %}
-        };
+                    amount: '{{ member.summary.total_assets_twd | commas }}'
+        },
+        {% endfor %}
+    };
 
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                const target = tab.getAttribute('data-tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const target = tab.getAttribute('data-tab');
 
-                // Update active tab
-                tabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
+            // Update active tab
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
 
-                // Toggle panels
-                panels.forEach(p => {
-                    p.style.display = p.id === 'panel-' + target ? '' : 'none';
-                });
-
-                // Update hero KPI
-                const info = panelData[target];
-                if (info) {
-                    const lang = localStorage.getItem('lang') || 'en';
-                    heroTitle.textContent = lang === 'zh' ? info.title_zh : info.title_en;
-                    heroAmount.querySelector('.amount').textContent = info.amount;
-                }
+            // Toggle panels
+            panels.forEach(p => {
+                p.style.display = p.id === 'panel-' + target ? '' : 'none';
             });
+
+            // Update hero KPI
+            const info = panelData[target];
+            if (info) {
+                const lang = localStorage.getItem('lang') || 'en';
+                heroTitle.textContent = lang === 'zh' ? info.title_zh : info.title_en;
+                heroAmount.querySelector('.amount').textContent = info.amount;
+            }
         });
+    });
     }
 </script>
 {% endblock %}

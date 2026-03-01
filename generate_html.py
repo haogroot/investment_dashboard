@@ -172,12 +172,9 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
         clean_analytics['tw_trade_history'] = tw_trade_history
 
     # Combine US and TW Data
-    all_positions = []
-    total_market_value_twd = 0
-    total_pnl_twd = 0
-    total_cost_twd = 0
+    raw_all_positions = []
 
-    # Add US positions to all_positions
+    # Add US positions to raw_all_positions
     us_fx_rate = clean_analytics['dashboard'].get('fx_rate', 1.0)
     for pos in clean_analytics['positions']:
         pos_twd = pos.copy()
@@ -191,13 +188,9 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
         
         unrealized_pnl_twd = pos.get('unrealized_pnl', 0) * us_fx_rate
         pos_twd['unrealized_pnl_unified'] = unrealized_pnl_twd
+        raw_all_positions.append(pos_twd)
 
-        total_market_value_twd += market_value_twd
-        total_pnl_twd += unrealized_pnl_twd
-        total_cost_twd += us_cost_twd
-        all_positions.append(pos_twd)
-
-    # Add TW positions to all_positions
+    # Add TW positions to raw_all_positions
     if tw_data:
         for pos in tw_data['tw_positions']:
             pos_twd = pos.copy()
@@ -213,14 +206,48 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
             
             unrealized_pnl_twd = pos.get('unrealized_pnl', 0)
             pos_twd['unrealized_pnl_unified'] = unrealized_pnl_twd
+            raw_all_positions.append(pos_twd)
 
-            total_market_value_twd += market_value_twd
-            total_pnl_twd += unrealized_pnl_twd
-            total_cost_twd += tw_cost_twd
-            all_positions.append(pos_twd)
+    # Aggregate by (currency, ticker)
+    aggregated_positions = {}
+    total_market_value_twd = 0
+    total_pnl_twd = 0
+    total_cost_twd = 0
 
-    # Recalculate weights for combined portfolio
+    for pos in raw_all_positions:
+        key = (pos['currency'], pos['ticker'])
+        if key not in aggregated_positions:
+            aggregated_positions[key] = {
+                'currency': pos['currency'],
+                'ticker': pos['ticker'],
+                'name': pos.get('name', ''),
+                'sector': pos.get('sector', ''),
+                'price': pos.get('price', 0),
+                'beta': pos.get('beta'),
+                'shares': 0,
+                'market_value_unified': 0,
+                'total_cost_unified': 0,
+                'unrealized_pnl_unified': 0
+            }
+        
+        agg_pos = aggregated_positions[key]
+        agg_pos['shares'] += pos.get('shares', 0)
+        agg_pos['market_value_unified'] += pos['market_value_unified']
+        agg_pos['total_cost_unified'] += pos['total_cost_unified']
+        agg_pos['unrealized_pnl_unified'] += pos['unrealized_pnl_unified']
+        
+        if agg_pos['beta'] is None and pos.get('beta') is not None:
+            agg_pos['beta'] = pos.get('beta')
+            
+        total_market_value_twd += pos['market_value_unified']
+        total_pnl_twd += pos['unrealized_pnl_unified']
+        total_cost_twd += pos['total_cost_unified']
+
+    all_positions = list(aggregated_positions.values())
+    
+    # Recalculate pnl_pct and weights for combined portfolio
     for pos in all_positions:
+        pos['pnl_pct'] = pos['unrealized_pnl_unified'] / pos['total_cost_unified'] if pos['total_cost_unified'] > 0 else 0
         pos['weight_unified'] = pos['market_value_unified'] / total_market_value_twd if total_market_value_twd > 0 else 0
 
     all_positions.sort(key=lambda x: x['market_value_unified'], reverse=True)
@@ -236,6 +263,17 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
         'position_count': len(all_positions)
     }
 
+    # Calculate per-user investments (to be used by Property and Goals)
+    user_investments = {}
+    us_fx_rate = clean_analytics.get('dashboard', {}).get('fx_rate', 1.0)
+    us_total_twd = sum(pos.get('market_value_twd', pos.get('market_value', 0) * us_fx_rate) for pos in clean_analytics.get('positions', []))
+    user_investments['Howard'] = us_total_twd
+
+    if tw_data:
+        for pos in tw_data['tw_positions']:
+            owner = pos.get('owner', 'Unknown')
+            user_investments[owner] = user_investments.get(owner, 0) + pos.get('market_value', 0)
+
     # 5.5 Load Property Data (multi-person support)
     property_data = None
     family_members = []
@@ -250,12 +288,14 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
             combined_details = {'emergency_fund': [], 'demand_deposit': [], 'fx_cash': [], 'fx_deposit': []}
 
             for name, pdata in members:
+                member_investments = user_investments.get(name, 0)
                 member_summary = {
                     'name': name,
                     'property': pdata,
                     'summary': {
-                        'total_assets_twd': pdata['liquid_funds'] + pdata['real_estate'] + pdata['liabilities'],
+                        'total_assets_twd': pdata['liquid_funds'] + pdata['real_estate'] + pdata['liabilities'] + member_investments,
                         'total_liquid_funds_twd': pdata['liquid_funds'],
+                        'total_investments_twd': member_investments,
                         'total_real_estate_twd': pdata['real_estate'],
                         'total_liabilities_twd': pdata['liabilities']
                     }
@@ -302,18 +342,8 @@ def generate_html_report(input_file=None, source_dir=None, property_file=None):
             # Fallback to legacy config if still using flat structure
             users_config = {'Howard': goal_config}
 
-        # 1. Calculate per-user assets
-        user_asset_twd = {}
-        # US stocks -> all Howard's
-        us_fx_rate = clean_analytics.get('dashboard', {}).get('fx_rate', 1.0)
-        us_total_twd = sum(pos.get('market_value_twd', pos.get('market_value', 0) * us_fx_rate) for pos in clean_analytics.get('positions', []))
-        user_asset_twd['Howard'] = us_total_twd
-        
-        # TW stocks -> by owner
-        if tw_data:
-            for pos in tw_data['tw_positions']:
-                owner = pos.get('owner', 'Unknown')
-                user_asset_twd[owner] = user_asset_twd.get(owner, 0) + pos.get('market_value', 0)
+        # 1. Reuse user_investments for per-user assets
+        user_asset_twd = user_investments.copy()
 
         goal_tracking_by_user = {}
         total_goals_count = 0

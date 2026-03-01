@@ -67,6 +67,9 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
     bond_value = 0
     other_value = 0
     
+    total_unrealized_pnl = 0
+    total_cost_calc_agg = 0
+    
     for ticker in df_units.columns:
         units = last_units.get(ticker, 0)
         if abs(units) < 0.001: continue # Skip closed positions
@@ -141,6 +144,8 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
         
         unrealized_pnl = market_val - total_cost_calc
         pnl_pct = (unrealized_pnl / total_cost_calc) if total_cost_calc != 0 else 0
+        total_unrealized_pnl += unrealized_pnl
+        total_cost_calc_agg += total_cost_calc
         
         weight = market_val / current_nav if current_nav > 0 else 0
         portfolio_weight_total += weight
@@ -480,6 +485,9 @@ def calculate_analytics(df_units, df_cash, market_data, df_ref, cost_basis, star
             'sharpe': sharpe,
             'stock_count': stock_count,
             'etf_count': etf_count,
+            'total_unrealized_pnl': total_unrealized_pnl,
+            'total_unrealized_pnl_twd': total_unrealized_pnl * fx_rate,
+            'total_unrealized_pnl_pct': (total_unrealized_pnl / total_cost_calc_agg) if total_cost_calc_agg > 0 else 0,
             'history': [{'date': d.strftime('%Y-%m-%d'), 'nav': v} for d, v in nav_series.items()],
             'nav_twd': current_nav * fx_rate,
             'fx_rate': fx_rate,

@@ -7,7 +7,7 @@
             Positions</h2>
 
         <!-- Summary Cards Row -->
-        <div class="row mb-4 row-cols-2 row-cols-md-5 g-3">
+        <div class="row mb-4 row-cols-2 row-cols-md-3 row-cols-lg-6 g-3">
             <div class="col">
                 <div class="card p-3 text-center h-100" style="border-top: 3px solid var(--primary-color);">
                     <div class="text-muted small mb-1" data-i18n="summary_nav_twd">Portfolio Value (TWD)</div>
@@ -22,15 +22,33 @@
                 </div>
             </div>
             <div class="col">
-                <div class="card p-3 text-center h-100" style="border-top: 3px solid var(--secondary-color);">
-                    <div class="text-muted small mb-1" data-i18n="summary_stocks">Stocks Count</div>
-                    <div class="fs-5 fw-bold text-light">{{ data.dashboard.stock_count }}</div>
+                <div class="card p-3 text-center h-100" style="border-top: 3px solid var(--success-color);">
+                    <div class="text-muted small mb-1" data-i18n="summary_total_pnl">Total P&L</div>
+                    <div
+                        class="fs-5 fw-bold privacy-sensitive {{ 'text-green' if data.dashboard.total_unrealized_pnl >= 0 else 'text-red' }}">
+                        {{ data.dashboard.total_unrealized_pnl | currency }}
+                        <div class="text-muted small fw-normal mt-1">NT$ {{ data.dashboard.total_unrealized_pnl_twd |
+                            commas }}</div>
+                    </div>
                 </div>
             </div>
             <div class="col">
                 <div class="card p-3 text-center h-100" style="border-top: 3px solid var(--secondary-color);">
-                    <div class="text-muted small mb-1" data-i18n="summary_etfs">ETFs Count</div>
-                    <div class="fs-5 fw-bold text-light">{{ data.dashboard.etf_count }}</div>
+                    <div class="text-muted small mb-1" data-i18n="summary_return_pct">Total Return</div>
+                    <div
+                        class="fs-5 fw-bold {{ 'text-green' if data.dashboard.total_unrealized_pnl_pct >= 0 else 'text-red' }}">
+                        {{ data.dashboard.total_unrealized_pnl_pct | pct }}
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card p-3 text-center h-100" style="border-top: 3px solid #f59e0b;">
+                    <div class="text-muted small mb-1" data-i18n="summary_positions">Holdings Count</div>
+                    <div class="fs-5 fw-bold" style="color: #fbbf24;">
+                        {{ data.dashboard.stock_count + data.dashboard.etf_count }} <span
+                            class="text-muted small">(<span data-i18n="text_stocks">Stocks</span> {{
+                            data.dashboard.stock_count }} / ETF {{ data.dashboard.etf_count }})</span>
+                    </div>
                 </div>
             </div>
             <div class="col">
@@ -214,8 +232,10 @@
         en: {
             summary_nav_twd: "Portfolio Value (TWD)",
             summary_nav_usd: "Portfolio Value (USD)",
-            summary_stocks: "Stocks Count",
-            summary_etfs: "ETFs Count",
+            summary_total_pnl: "Total P&L",
+            summary_return_pct: "Total Return",
+            summary_positions: "Holdings Count",
+            text_stocks: "Stocks",
             summary_cash: "Cash Balance",
             mkt_val_twd: "Market Value (TWD)",
             beta: "Beta",
@@ -229,8 +249,10 @@
         zh: {
             summary_nav_twd: "投資組合總值 (台幣)",
             summary_nav_usd: "投資組合總值 (美元)",
-            summary_stocks: "股票數量",
-            summary_etfs: "ETF 數量",
+            summary_total_pnl: "總損益",
+            summary_return_pct: "總報酬率",
+            summary_positions: "持倉數量",
+            text_stocks: "股票",
             summary_cash: "現金餘額",
             mkt_val_twd: "市值 (台幣)",
             beta: "Beta 值",
