@@ -502,6 +502,7 @@ if __name__ == "__main__":
     property_file_path = None
     if args.property_file:
         property_file_path = Path(args.property_file)
-
+    elif Path('property').is_dir():
+        property_file_path = Path('property')
     setup_directories()
     generate_html_report(input_path, source_dir=source_dir_path, property_file=property_file_path)

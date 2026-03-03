@@ -13,7 +13,9 @@ def extract_asset_details(xl):
         'emergency_fund': [],
         'demand_deposit': [],
         'fx_cash': [],
-        'fx_deposit': []
+        'fx_deposit': [],
+        'real_estate': [],
+        'liabilities': []
     }
     
     if '01資產負債詳情' not in xl.sheet_names:
@@ -25,7 +27,9 @@ def extract_asset_details(xl):
         '備用金': ('emergency_fund', 1, 9),
         '活期存款': ('demand_deposit', 1, 9),
         '外幣現金': ('fx_cash', 1, 9),
-        '外幣存款': ('fx_deposit', 1, 9)
+        '外幣存款': ('fx_deposit', 1, 9),
+        '不動產': ('real_estate', 1, 9),       # Name col 1, 帳面估值 is col 9
+        '債務': ('liabilities', 1, 5)          # Name col 1, 剩餘借金 is col 5
     }
     
     current_category = None
@@ -55,6 +59,9 @@ def extract_asset_details(xl):
                 amt = float(amt_str)
                 # Only keep valid positive records (sometimes there are empty records, or 0 balances)
                 if name and not math.isnan(amt) and amt > 0:
+                    # Negate liabilities for display/calculation purposes since they represent debt
+                    if cat_key == 'liabilities':
+                        amt = -amt
                     details[cat_key].append({'name': name, 'amount': amt})
             except ValueError:
                 pass
@@ -172,14 +179,24 @@ def load_property_data(file_path):
             if not found_latest:
                 results[key] = 0.0
                 
+        # Extract individual bank/asset details first (most accurate)
+        details = extract_asset_details(xl)
+
+        def get_best_value(key_en, key_zh):
+            # If details exist for this category, always use its sum as the single source of truth
+            if details.get(key_en):
+                return sum(item['amount'] for item in details[key_en])
+            return results.get(key_zh, 0.0)
+
         # Clean up the liability key for easier access
         clean_results = {
-            'emergency_fund': results.get('備用金', 0.0),
-            'demand_deposit': results.get('活期存款', 0.0),
-            'fx_cash': results.get('外幣現金', 0.0),
-            'fx_deposit': results.get('外幣存款', 0.0),
-            'real_estate': results.get('不動產現值', 0.0),
-            'liabilities': results.get('負債(數值前請加-)', 0.0)
+            'emergency_fund': get_best_value('emergency_fund', '備用金'),
+            'demand_deposit': get_best_value('demand_deposit', '活期存款'),
+            'fx_cash': get_best_value('fx_cash', '外幣現金'),
+            'fx_deposit': get_best_value('fx_deposit', '外幣存款'),
+            'real_estate': get_best_value('real_estate', '不動產現值'),
+            'liabilities': get_best_value('liabilities', '負債(數值前請加-)'),
+            'details': details
         }
         
         # Calculate liquid funds
@@ -189,9 +206,6 @@ def load_property_data(file_path):
             clean_results['fx_cash'],
             clean_results['fx_deposit']
         ])
-        
-        # Extract individual bank/asset details
-        clean_results['details'] = extract_asset_details(xl)
         
         print(f"Successfully extracted property data: {clean_results}")
         return clean_results
@@ -212,13 +226,19 @@ def load_property_dir(dir_path):
         print(f"Property directory not found: {dir_path}")
         return []
 
-    members = []
+    # Find the latest file for each member based on sorted filename
+    latest_files = {}
     for f in sorted(dir_path.glob("*.xlsx")):
         # Skip Zone.Identifier files or temp files
         if ':' in f.name or f.name.startswith('~'):
             continue
         # Derive person name from filename (part before first '_' or '.')
         name = f.stem.split('_')[0]
+        # Sorted order guarantees that later dates (e.g. 202602 vs 202510) come last
+        latest_files[name] = f
+
+    members = []
+    for name, f in sorted(latest_files.items()):
         data = load_property_data(f)
         if data:
             members.append((name, data))

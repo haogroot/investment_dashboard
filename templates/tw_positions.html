@@ -115,7 +115,8 @@
                             <th onclick="sortTwTable(1)" data-i18n="name">名稱 <i class="fas fa-sort small"></i></th>
                             <th onclick="sortTwTable(2)" data-i18n="sector">板塊 <i class="fas fa-sort small"></i>
                             </th>
-                            <th onclick="sortTwTable(3)" data-i18n="owner">持有人 <i class="fas fa-sort small"></i>
+                            <th onclick="sortTwTable(3)" data-i18n="owner" id="twOwnerHeader">持有人 <i
+                                    class="fas fa-sort small"></i>
                             </th>
                             <th onclick="sortTwTable(4, true)" class="text-end" data-i18n="shares">股數 <i
                                     class="fas fa-sort small"></i></th>
@@ -418,6 +419,16 @@
             });
         });
 
+        // Toggle owner column visibility
+        const ownerHeader = document.getElementById('twOwnerHeader');
+        if (ownerHeader) {
+            if (ownerFilter === 'All') {
+                ownerHeader.classList.remove('d-none');
+            } else {
+                ownerHeader.classList.add('d-none');
+            }
+        }
+
         // 6. Update Table
         let tableHTML = '';
         filteredPos.forEach(pos => {
@@ -426,13 +437,14 @@
             let pctClass = pos.pnl_pct >= 0 ? 'text-green' : 'text-red';
             let betaHtml = pos.beta === null ? '—' : parseFloat(pos.beta).toFixed(2);
             let betaColorClass = pos.beta === null ? 'text-muted' : '';
+            let ownerCellClass = ownerFilter === 'All' ? '' : 'd-none';
 
             tableHTML += `
                     <tr>
                         <td class="fw-bold">${pos.ticker_local}</td>
                         <td>${pos.name_local}</td>
                         <td>${pos.sector}</td>
-                        <td><span class="badge ${badgeClass} text-light">${pos.owner}</span></td>
+                        <td class="${ownerCellClass}"><span class="badge ${badgeClass} text-light">${pos.owner}</span></td>
                         <td class="text-end privacy-sensitive">${formatNumber(pos.shares, 0)}</td>
                         <td class="text-end privacy-sensitive">${formatNumber(pos.avg_cost, 2)}</td>
                         <td class="text-end privacy-sensitive">${formatNumber(pos.price, 2)}</td>

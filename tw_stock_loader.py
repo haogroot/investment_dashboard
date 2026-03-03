@@ -43,7 +43,8 @@ def load_tw_inventory(csv_path, owner='Unknown'):
         '台新新光金': '2887', '台積電': '2330', '國泰金': '2882', '富華新': '3056',
         '富邦台50': '006208', '復華日本龍頭': '00949', '技嘉': '2376', '新潤': '6186',
         '新美齊': '2442', '智基': '6294', '欣陸': '3703', '永豐金': '2890',
-        '聯上發': '2537', '長虹': '5534', '順天': '5525',
+        '聯上發': '2537', '長虹': '5534', '順天': '5525', '台新日本半導體': '00951',
+        '元大美債7-10': '00697B',
     }
 
     if '淨收付' in df.columns and '成交股數' in df.columns:
@@ -143,8 +144,16 @@ def load_tw_inventory(csv_path, owner='Unknown'):
         lambda x: pd.Series(extract_ticker(x))
     )
 
-    # Add .TW suffix for yfinance
-    df['YFTicker'] = df['Ticker'].apply(lambda x: f"{x}.TW")
+    # Add .TWO suffix for bond ETFs (ending with B), otherwise .TW
+    def append_suffix(ticker):
+        if ticker.endswith('.TW') or ticker.endswith('.TWO'):
+            return ticker
+        elif ticker.endswith('B'):
+            return f"{ticker}.TWO"
+        else:
+            return f"{ticker}.TW"
+
+    df['YFTicker'] = df['Ticker'].apply(append_suffix)
 
     # --- 5. Fetch yfinance data ---
     tickers_tw = df['YFTicker'].tolist()
